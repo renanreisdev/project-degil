@@ -96,7 +96,7 @@ export default function Regularization() {
                 </li>
 
                 <li className="text-[#03466e] font-semibold leading-relaxed mx-4">
-                    <span className="text-secondary font-bold">Emissão do certificado de conclusão de obra "habite-se":</span><br />A partir de R$1000
+                    <span className="text-secondary font-bold">Emissão do certificado de conclusão de obra &quot;habite-se&quot;:</span><br />A partir de R$1000
                 </li>
 
                 <li className="text-[#03466e] font-semibold leading-relaxed mx-4">

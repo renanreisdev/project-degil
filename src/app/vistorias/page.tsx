@@ -135,13 +135,13 @@ export default function Inspections() {
         setValue("addressNumber", "")
         setValue("city", "")
         setValue("effectivenessDate", "")
-        setValue("hasCourtyard", "")
-        setValue("hasFurniture", "")
-        setValue("inspectionType", "")
+        setValue("hasCourtyard", "0")
+        setValue("hasFurniture", "0")
+        setValue("inspectionType", "0")
         setValue("neighborhood", "")
         setValue("propertyArea", "")
         setValue("propertyCode", "")
-        setValue("propertyType", "")
+        setValue("propertyType", "0")
         setValue("requesterEmail", "")
         setValue("requesterName", "")
         setValue("zipCode", "")
@@ -195,7 +195,7 @@ export default function Inspections() {
     if (isApartmentState === "apartment") {
       setValue("hasCourtyard", "no")
     }
-  }, [isApartmentState])
+  }, [isApartmentState, setValue])
 
   const handleInputPropertyTypeChange = (target: HTMLInputElement) => {
     setIsApartmentState(target.value)

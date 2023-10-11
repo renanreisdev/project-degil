@@ -1,17 +1,17 @@
 export type formDataType = {
     requesterName: string
     requesterEmail: string
-    propertyCode: number
+    propertyCode: number | ""
     zipCode: string
     city: string
     neighborhood: string
     address: string
-    addressNumber: number
+    addressNumber: number | ""
     addressComplement: string
-    propertyType: "apartment" | "house"
-    propertyArea: number
-    hasFurniture: "withoutFurniture" | "semiFurnished" | "furnished"
-    hasCourtyard: "yes" | "no"
+    propertyType: "apartment" | "house" | "0"
+    propertyArea: number | ""
+    hasFurniture: "withoutFurniture" | "semiFurnished" | "furnished" | "0"
+    hasCourtyard: "yes" | "no" | "0"
     effectivenessDate: string
-    inspectionType: "entry" | "exit"
+    inspectionType: "entry" | "exit" | "0"
 }
