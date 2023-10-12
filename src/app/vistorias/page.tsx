@@ -154,7 +154,7 @@ export default function Inspections() {
         setTimeout(() => {
           setEmailSentState(false)
           setEmailResponseState("")
-        }, 2000)
+        }, 4000)
       } else {
         setSendingEmailState(false)
         setEmailSentState(false)
@@ -477,7 +477,7 @@ export default function Inspections() {
 
         {sendingEmailState && (
           <button
-            className="self-center flex justify-center items-center gap-3 w-1/2 mt-4 p-2 text-white bg-primary rounded-lg transition-all duration-300"
+            className="m-auto w-full max-w-xs mt-4 p-2 text-white rounded-lg bg-hover transition-all duration-300 xs:col-span-2 flex justify-center items-center gap-3"
           >
             <AiOutlineLoading size={24} className="animate-spin" /> Enviando...
           </button>

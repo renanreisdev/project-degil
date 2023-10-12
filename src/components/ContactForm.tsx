@@ -44,7 +44,7 @@ export const ContactForm = () => {
                 setTimeout(() => {
                     setEmailSentState(false)
                     setEmailResponseState("")
-                }, 2000)
+                }, 4000)
             } else {
                 setSendingEmailState(false)
                 setEmailSentState(false)
