@@ -12,11 +12,15 @@ import { AiOutlineLoading } from "react-icons/ai"
 export default function Inspections() {
   const { register, handleSubmit, setValue, formState: { errors }, } = useForm<formDataType>()
 
+  console.log(errors)
+
   const [sendingEmailState, setSendingEmailState] = useState(false)
   const [emailSentState, setEmailSentState] = useState(false)
   const [emailResponseState, setEmailResponseState] = useState('')
 
   const [isApartmentState, setIsApartmentState] = useState('house')
+
+  const currentDate = new Date().toISOString().split("T")[0];
 
   const onSubmit = async (data: formDataType) => {
     const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculateInspectionPrice(data))
@@ -28,9 +32,6 @@ export default function Inspections() {
     const courtyard = hasCourtyard === 'yes' ? "Sim" : "Não"
     const inspection = inspectionType === 'entry' ? "Entrada" : "Saída"
     const formattedDate = new Date(effectivenessDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
-
-    // const messageEmail = `Olá! Meu nome é ${requesterName}, acabei de realizar uma simulação no seu site e gostaria de mais informações, aqui está o resultado da simulação:<br/><br/>
-    // Nome: ${requesterName}<br />Email: ${requesterEmail}<br />Código do imóvel: ${propertyCode}<br />CEP: ${zipCode}<br />Cidade: ${city}<br />Bairro: ${neighborhood}<br />Endereço: ${address}<br />Número: ${addressNumber}<br />Complemento: ${addressComplement}<br />Tipo de imóvel: ${houseType}<br />Área do imóvel: ${propertyArea}m²<br />Possui mobília: ${furniture}<br />Possui pátio: ${courtyard}<br />Data de Vigência: ${formattedDate}\nTipo de vistoria: ${inspection}<br /><br />Valor Vistoria: ${price}`
 
     const messageEmail = `<style>
     * {
@@ -102,8 +103,6 @@ export default function Inspections() {
     </div>
 </div>`
 
-    // const messageWhats = `Olá! Acabei de realizar uma simulação no seu site e gostaria de mais informações, aqui está o resultado da simulação:
-    // \n*Nome*: ${requesterName}\n*Email*: ${requesterEmail}\n*Código do imóvel*: ${propertyCode}\n*CEP*: ${zipCode}\n*Cidade*: ${city}\n*Bairro*: ${neighborhood}\n*Endereço*: ${address}\n*Número*: ${addressNumber}\n*Complemento*: ${addressComplement}\n*Tipo de imóvel*: ${houseType}\n*Área do imóvel*: ${propertyArea}m²\n*Possui mobília*: ${furniture}\n*Possui pátio*: ${courtyard}\n*Data de Vigência*: ${formattedDate}\n*Tipo de vistoria*: ${inspection}\n\n*Valor Vistoria: ${price}*`
     const messageWhats = `Olá! Acabei de realizar uma simulação no seu site e gostaria de mais informações, aqui está o resultado da simulação:
     \n*--- Dados do contato ---*\n*Nome*: ${requesterName}\n*Email*: ${requesterEmail}\n\n*--- Dados de endereço ---*\n*CEP*: ${zipCode}\n*Cidade*: ${city}\n*Bairro*: ${neighborhood}\n*Endereço*: ${address}\n*Número*: ${addressNumber}\n*Complemento*: ${addressComplement}\n\n*--- Dados da vistoria ---*\n*Código do imóvel*: ${propertyCode}\n*Tipo de imóvel*: ${houseType}\n*Área do imóvel*: ${propertyArea}m²\n*Possui mobília*: ${furniture}\n*Possui pátio*: ${courtyard}\n*Data de Vigência*: ${formattedDate}\n*Tipo de vistoria*: ${inspection}\n\n*Valor Vistoria: ${price}*`
 
@@ -235,7 +234,7 @@ export default function Inspections() {
             disabled={sendingEmailState}
             type="email"
             placeholder="Digite seu melhor e-mail"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterEmail ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("requesterEmail", { required: true, validate: (value) => validator.isEmail(value) })}
           />
 
@@ -257,7 +256,7 @@ export default function Inspections() {
             type="number"
             maxLength={10}
             placeholder="Código do imóvel"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.propertyCode ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("propertyCode", { required: true })}
           />
 
@@ -273,7 +272,7 @@ export default function Inspections() {
             disabled={sendingEmailState}
             mask="99999-999"
             placeholder="Digite o CEP do imóvel"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.zipCode ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("zipCode", { required: true, onBlur: (e) => { handleZipCodeBlur(e.target.value.replace('-', '')) } })}
           />
 
@@ -289,7 +288,7 @@ export default function Inspections() {
             disabled={sendingEmailState}
             type="text"
             placeholder="Cidade"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.city ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("city", { required: true })}
           />
 
@@ -321,7 +320,7 @@ export default function Inspections() {
             disabled={sendingEmailState}
             type="text"
             placeholder="Endereço"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.address ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("address", { required: true })}
           />
 
@@ -337,7 +336,7 @@ export default function Inspections() {
             disabled={sendingEmailState}
             type="number"
             placeholder="Número"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.addressNumber ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("addressNumber", { required: true })}
           />
 
@@ -353,7 +352,7 @@ export default function Inspections() {
             disabled={sendingEmailState}
             type="text"
             placeholder="Complemento"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear border-slate-400 outline-[#ed631d]`}
             {...register("addressComplement")}
           />
 
@@ -364,7 +363,7 @@ export default function Inspections() {
         <div className="relative flex">
           <select
             disabled={sendingEmailState}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.propertyType ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target), validate: (value) => value !== "0" })}
           >
             <option value="0" selected disabled ></option>
@@ -383,9 +382,11 @@ export default function Inspections() {
           <input
             disabled={sendingEmailState}
             type="number"
+            min={1}
+            max={999999}
             placeholder="Área do imóvel (m²)"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("propertyArea", { required: true })}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.propertyArea ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            {...register("propertyArea", { required: true, validate: (value) => Number(value) >= 1 && Number(value) <= 999999 })}
           />
 
           <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Área do imóvel (m²)</label>
@@ -393,12 +394,16 @@ export default function Inspections() {
           {errors?.propertyArea?.type === "required" && (
             <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Área do imóvel é obrigatório</p>
           )}
+
+          {errors?.propertyArea?.type === "validate" && (
+            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Valores permitidos (1 a 999999)</p>
+          )}
         </div>
 
         <div className="relative flex">
           <select
             disabled={sendingEmailState}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.hasFurniture ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("hasFurniture", { validate: (value) => value !== "0" })}
           >
             <option value="0" selected disabled></option>
@@ -417,7 +422,7 @@ export default function Inspections() {
         <div className="relative flex">
           <select
             disabled={sendingEmailState ? true : isApartmentState === "apartment" ? true : false}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.hasCourtyard ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("hasCourtyard", { validate: (value) => value !== "0" })}
           >
             <option value="0" selected={isApartmentState === "apartment" ? false : true} disabled></option>
@@ -437,21 +442,26 @@ export default function Inspections() {
             disabled={sendingEmailState}
             type="date"
             placeholder="Data de vigência"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("effectivenessDate", { validate: (value) => value !== "0" })}
+            min={currentDate}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.effectivenessDate ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            {...register("effectivenessDate", { required: true, validate: (value) => value >= currentDate })}
           />
 
           <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Data de vigência</label>
 
-          {errors?.hasFurniture?.type === "validate" && (
+          {errors?.effectivenessDate?.type === "required" && (
             <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Selecionar data de vigência</p>
+          )}
+
+          {errors?.effectivenessDate?.type === "validate" && (
+            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">A data deve ser igual ou maior que a data atual</p>
           )}
         </div>
 
         <div className="relative flex">
           <select
             disabled={sendingEmailState}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
+            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.inspectionType ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
             {...register("inspectionType", { validate: (value) => value !== "0" })}
           >
             <option value="0" selected disabled></option>
@@ -461,7 +471,7 @@ export default function Inspections() {
 
           <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Tipo de vistoria</label>
 
-          {errors?.hasCourtyard?.type === "validate" && (
+          {errors?.inspectionType?.type === "validate" && (
             <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Selecionar tipo de vistoria</p>
           )}
         </div>
