@@ -3,7 +3,7 @@ import Link from "next/link"
 import { config } from "../../config.local"
 import { useForm } from "react-hook-form"
 import { AiOutlineLoading } from "react-icons/ai"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 type contactFormType = {
     email: string,
