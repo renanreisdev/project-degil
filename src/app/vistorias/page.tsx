@@ -1,7 +1,7 @@
 "use client"
 
 import { useForm } from "react-hook-form"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import validator from "validator"
 import { config } from "../../../config.local"
 import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
@@ -15,6 +15,7 @@ import { emailMessage as defaultEmailMessage, whatsappMessage as defaultWhatsapp
 import { ButtonComponent } from "@/components/ButtonComponent"
 import { NotificationsComponent } from "@/components/NotificationsComponent"
 import { sendEmail } from "@/utils/sendEmail"
+import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType, optionsPropertyType } from "@/utils/selectOptions"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
@@ -36,19 +37,23 @@ const schema = z.object({
   addressNumber: z.string()
     .min(1, { message: "O número é obrigatório" }),
   propertyType: z.string({ invalid_type_error: "Selecione o tipo do imóvel" })
-    .refine((value) => ["apartment", "house"].includes(value)),
+    .min(1, { message: "Selecione uma opção" })
+    .refine((value) => optionsPropertyType.some((option) => option.value === value)),
   addressComplement: z.string(),
   propertyArea: z.string()
     .min(1, { message: "Entre com um número entre 1 e 99999" }).max(99999, { message: "Entre com um valo entre 1 e 99999" }),
   hasFurniture: z.string({ invalid_type_error: "Selecione uma opção" })
-    .refine((value) => ["semiFurnished", "furnished", "unfurnished"].includes(value)),
+    .min(1, { message: "Selecione uma opção" })
+    .refine((value) => optionsHasFurniture.some((option) => option.value === value)),
   hasCourtyard: z.string({ invalid_type_error: "Selecione uma opção" })
-    .refine((value) => ["yes", "no"].includes(value)),
+    .min(1, { message: "Selecione uma opção" })
+    .refine((value) => optionsHasCourtyard.some((option) => option.value === value)),
   effectivenessDate: z.string()
     .min(1, { message: "A data deve ser preenchida" })
     .refine((value) => value >= currentDate, { message: "A data deve ser maior ou igual à data atual" }),
   inspectionType: z.string({ invalid_type_error: "Selecione uma opção" })
-    .refine((value) => ["entry", "exit"].includes(value)),
+    .min(1, { message: "Selecione uma opção" })
+    .refine((value) => optionsInspectionType.some((option) => option.value === value)),
 })
 
 export type FormDataProps = z.infer<typeof schema>
@@ -282,25 +287,18 @@ export default function Inspections() {
           label="Tipo do imóvel"
           helperText={errors?.propertyType?.message}
         >
-          <Input
-            disabled={isSendingEmail}
-            type="radio"
-            isRadioInput={true}
-            label="Casa"
-            value={"house"}
-            helperText={errors?.propertyType?.message}
-            {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target) })}
-          />
-
-          <Input
-            disabled={isSendingEmail}
-            type="radio"
-            isRadioInput={true}
-            label="Apartamento"
-            value={"apartment"}
-            helperText={errors?.propertyType?.message}
-            {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target) })}
-          />
+          {optionsPropertyType.map((option) => (
+            <Input
+              key={option.value}
+              disabled={isSendingEmail}
+              type="radio"
+              isRadioInput={true}
+              label={option.label}
+              value={option.value}
+              helperText={errors?.propertyType?.message}
+              {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target) })}
+            />
+          ))}
         </InputRadioContainer>
 
         <Input
@@ -319,60 +317,36 @@ export default function Inspections() {
           label="Imóvel possui mobílias"
           helperText={errors?.hasFurniture?.message}
         >
-          <Input
-            disabled={isSendingEmail}
-            type="radio"
-            isRadioInput={true}
-            label="Sem mobília"
-            value={"unfurnished"}
-            helperText={errors?.hasFurniture?.message}
-            {...register("hasFurniture")}
-          />
-
-          <Input
-            disabled={isSendingEmail}
-            type="radio"
-            isRadioInput={true}
-            label="Semimobiliado"
-            value={"semiFurnished"}
-            helperText={errors?.hasFurniture?.message}
-            {...register("hasFurniture")}
-          />
-
-          <Input
-            disabled={isSendingEmail}
-            type="radio"
-            isRadioInput={true}
-            label="Mobiliado"
-            value={"furnished"}
-            helperText={errors?.hasFurniture?.message}
-            {...register("hasFurniture")}
-          />
+          {optionsHasFurniture.map((option) => (
+            <Input
+              key={option.value}
+              disabled={isSendingEmail}
+              type="radio"
+              isRadioInput={true}
+              label={option.label}
+              value={option.value}
+              helperText={errors?.hasFurniture?.message}
+              {...register("hasFurniture")}
+            />
+          ))}
         </InputRadioContainer>
 
         <InputRadioContainer
           label="Imóvel possui pátio"
           helperText={errors?.hasCourtyard?.message}
         >
-          <Input
-            disabled={isSendingEmail ? true : getValues("propertyType") === "apartment" ? true : false}
-            type="radio"
-            isRadioInput={true}
-            label="Sim"
-            value={"yes"}
-            helperText={errors?.hasCourtyard?.message}
-            {...register("hasCourtyard")}
-          />
-
-          <Input
-            disabled={isSendingEmail ? true : getValues("propertyType") === "apartment" ? true : false}
-            type="radio"
-            isRadioInput={true}
-            label="Não"
-            value={"no"}
-            helperText={errors?.hasCourtyard?.message}
-            {...register("hasCourtyard")}
-          />
+          {optionsHasCourtyard.map((option) => (
+            <Input
+              key={option.value}
+              disabled={isSendingEmail}
+              type="radio"
+              isRadioInput={true}
+              label={option.label}
+              value={option.value}
+              helperText={errors?.hasCourtyard?.message}
+              {...register("hasCourtyard")}
+            />
+          ))}
         </InputRadioContainer>
 
         <Input
@@ -389,25 +363,18 @@ export default function Inspections() {
           label="Tipo de vistoria"
           helperText={errors?.inspectionType?.message}
         >
-          <Input
-            disabled={isSendingEmail}
-            type="radio"
-            isRadioInput={true}
-            label="Entrada"
-            value={"entry"}
-            helperText={errors?.inspectionType?.message}
-            {...register("inspectionType")}
-          />
-
-          <Input
-            disabled={isSendingEmail}
-            type="radio"
-            isRadioInput={true}
-            label="Saída"
-            value={"exit"}
-            helperText={errors?.inspectionType?.message}
-            {...register("inspectionType")}
-          />
+          {optionsInspectionType.map((option) => (
+            <Input
+              key={option.value}
+              disabled={isSendingEmail}
+              type="radio"
+              isRadioInput={true}
+              label={option.label}
+              value={option.value}
+              helperText={errors?.inspectionType?.message}
+              {...register("inspectionType")}
+            />
+          ))}
         </InputRadioContainer>
 
         {!isSendingEmail && (
