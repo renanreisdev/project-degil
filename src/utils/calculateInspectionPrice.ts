@@ -6,7 +6,7 @@ const initialPrice = config.INITIAL_PRICE
 const surplusM2 = config.SURPLUS_M2
 const semiFurnished = config.SEMI_FURNISHED
 const furnished = config.FURNISHED
-const courtyard = config.COUTYARD
+const courtyard = config.COURTYARD
 
 export const calculateInspectionPrice = (data: FormDataProps) => {
     const { propertyArea, hasFurniture, hasCourtyard } = data
