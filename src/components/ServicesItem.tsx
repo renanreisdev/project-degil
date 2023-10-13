@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { LinkComponent } from "./LinkComponet"
+import { LinkComponent } from "./LinkComponent"
 
 type ServicesItemProps = {
     title: string,

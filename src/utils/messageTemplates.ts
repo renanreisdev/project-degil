@@ -8,7 +8,6 @@ export type messageTemplates = {
     address: string
     addressNumber: string
     addressComplement: string
-    propertyType: string
     propertyArea: string
     furniture: string
     courtyard: string
@@ -17,7 +16,7 @@ export type messageTemplates = {
     price: string
 }
 
-export const emailMessage = ({ name, email, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyType, propertyArea, furniture, courtyard, effectivenessDate, inspectionType, price }: messageTemplates) => {
+export const emailMessage = ({ name, email, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, furniture, courtyard, effectivenessDate, inspectionType, price }: messageTemplates) => {
     return `<style>
     * {
         margin: 0;
@@ -80,7 +79,6 @@ export const emailMessage = ({ name, email, propertyCode, zipCode, city, neighbo
     <div style="margin-top: 15px; padding: 10px; border: 1px solid #eee; border-radius: 5px;">
         <div style="display: inline-block; width: 100%;">
             <h3 style="margin-bottom: 25px;">Dados da vistoria</h3>
-            <p><b>Tipo de imóvel</b>: ${propertyType}</p>
             <p><b>Área do imóvel</b>: ${propertyArea}m²</p>
             <p><b>Possui mobília</b>: ${furniture}</p>
             <p><b>Possui pátio</b>: ${courtyard}</p>
@@ -89,7 +87,7 @@ export const emailMessage = ({ name, email, propertyCode, zipCode, city, neighbo
     </div>`
 }
 
-export const whatsappMessage = ({ name, email, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyType, propertyArea, furniture, courtyard, effectivenessDate, inspectionType, price }: messageTemplates) => {
+export const whatsappMessage = ({ name, email, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, furniture, courtyard, effectivenessDate, inspectionType, price }: messageTemplates) => {
     return `Olá! Acabei de realizar uma simulação no seu site e gostaria de mais informações, aqui está o resultado da simulação:
-    \n*--- Dados do contato ---*\n*Nome*: ${name}\n*Email*: ${email}\n\n*--- Dados de endereço ---*\n*CEP*: ${zipCode}\n*Cidade*: ${city}\n*Bairro*: ${neighborhood}\n*Endereço*: ${address}\n*Número*: ${addressNumber}\n*Complemento*: ${addressComplement}\n\n*--- Dados da vistoria ---*\n*Código do imóvel*: ${propertyCode}\n*Tipo de imóvel*: ${propertyType}\n*Área do imóvel*: ${propertyArea}m²\n*Possui mobília*: ${furniture}\n*Possui pátio*: ${courtyard}\n*Data de Vigência*: ${effectivenessDate}\n*Tipo de vistoria*: ${inspectionType}\n\n*Valor Vistoria: ${price}*`
+    \n*--- Dados do contato ---*\n*Nome*: ${name}\n*Email*: ${email}\n\n*--- Dados de endereço ---*\n*CEP*: ${zipCode}\n*Cidade*: ${city}\n*Bairro*: ${neighborhood}\n*Endereço*: ${address}\n*Número*: ${addressNumber}\n*Complemento*: ${addressComplement}\n\n*--- Dados da vistoria ---*\n*Código do imóvel*: ${propertyCode}\n*Área do imóvel*: ${propertyArea}m²\n*Possui mobília*: ${furniture}\n*Possui pátio*: ${courtyard}\n*Data de Vigência*: ${effectivenessDate}\n*Tipo de vistoria*: ${inspectionType}\n\n*Valor Vistoria: ${price}*`
 }
