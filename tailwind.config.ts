@@ -14,12 +14,15 @@ const config: Config = {
         hover: "#303f47"
       },
       textColor: {
-        pageTitle: "#03466e",
-        serviceTitle: "#f7bb5d",
+        primary: "#03466e",
         secondary: "#ed631d",
+        hover: "#303f47",
+        serviceTitle: "#f7bb5d"
       },
       borderColor: {
+        primary: "#03466e",
         orange: "#ed631d",
+        hover: "#303f47"
       },
     },
     screens: {
