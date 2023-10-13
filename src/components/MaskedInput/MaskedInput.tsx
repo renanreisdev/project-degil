@@ -28,7 +28,6 @@ export const MaskedInput = forwardRef<ReactInputMask, InputMaskProps>(
     ) => {
         const inputId = useId()
         const hasErrors = helperText.length > 0
-        console.log("ERROS =>", label + " - " + helperText)
 
         return (
             <div className={isRadioInput ? twMerge("group relative flex justify-center items-center w-24 h-[34px] border rounded border-slate-400 transition-all ease-in-out duration-300 hover:bg-[#ed631d] hover:border-transparent", classNameDiv) : twMerge("flex flex-col mb-2", classNameDiv)}>
