@@ -16,6 +16,8 @@ import { ButtonComponent } from "@/components/ButtonComponent"
 import { NotificationsComponent } from "@/components/NotificationsComponent"
 import { sendEmail } from "@/utils/sendEmail"
 import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType } from "@/utils/selectOptions"
+import { PageTitle } from "@/components/PageTitle"
+import { MainComponent } from "@/components/MainComponent"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
@@ -179,13 +181,12 @@ export default function Inspections() {
   }
 
   return (
-    <div className="flex flex-col items-center p-3 sm:p-10">
+    <MainComponent className="items-center">
       {hasEmailBeenSent && (
         <NotificationsComponent size="md" position="bottom-right">{emailResponse}</NotificationsComponent>
       )}
 
-      <h1 className="self-start text-3xl text-primary">Vistorias</h1>
-      <span className="block w-full h-2 my-4 bg-secondary" />
+      <PageTitle title="Vistorias" />
       <div className="w-full max-w-3xl grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
         <h2 className="text-xl text-center text-secondary font-bold xs:col-span-2">Faça uma simulação</h2>
 
@@ -362,6 +363,6 @@ export default function Inspections() {
           </NotificationsComponent>
         )}
       </div>
-    </div>
+    </MainComponent>
   )
 }

@@ -1,10 +1,11 @@
+import { MainComponent } from "@/components/MainComponent";
+import { PageTitle } from "@/components/PageTitle";
+
 export default function Consultancy() {
     return (
-        <main className="flex flex-col items-center p-10 sm:p-10">
-            <h1 className="self-start text-3xl text-primary">
-                Consultoria de financiamento imobiliário
-            </h1>
-            <span className="block w-full h-2 mt-4 mb-6 bg-secondary sm:mb-10" />
+        <MainComponent className="items-center">
+            <PageTitle title="Consultoria de financiamento imobiliário" />
+
             <p className="text-primary font-semibold leading-relaxed indent-10">
                 Gostaria de apresentar a você uma oportunidade única de adquirir a sua casa própria ou
                 investimento, com segurança: O <span className="text-secondary font-bold">financiamento de obra</span>.
@@ -49,6 +50,6 @@ export default function Consultancy() {
                     <span className="text-secondary font-bold">Formulação/preenchimento da planilha PFUI:</span><br />A partir de R$1000
                 </li>
             </ul>
-        </main>
+        </MainComponent>
     )
 }

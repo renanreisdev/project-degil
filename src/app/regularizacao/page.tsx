@@ -1,13 +1,12 @@
 import { LinkComponent } from "@/components/LinkComponent";
+import { MainComponent } from "@/components/MainComponent";
+import { PageTitle } from "@/components/PageTitle";
 import Link from "next/link";
 
 export default function Regularization() {
     return (
-        <main className="flex flex-col items-center p-10 sm:p-10">
-            <h1 className="self-start text-3xl text-primary">
-                Regularização de residências e comércios
-            </h1>
-            <span className="block w-full h-2 mt-4 mb-6 bg-secondary sm:mb-10" />
+        <MainComponent className="items-center">
+            <PageTitle title="Regularização de residências e comércios" />
             <p className="text-primary font-semibold leading-relaxed indent-10">
                 Se você é proprietário de um imóvel, seja ele residência ou comércio, certamente sabe que a regularização de
                 é um processo indispensável para garantir a legalidade e a <span className="text-secondary font-bold">valorização do seu patrimônio</span>. E se você ainda
@@ -108,6 +107,6 @@ export default function Regularization() {
                     <span className="text-secondary font-bold">Emissão da certidão negativa de débitos:</span><br />A partir de R$1000
                 </li>
             </ul>
-        </main>
+        </MainComponent>
     )
 }

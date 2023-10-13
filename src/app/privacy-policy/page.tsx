@@ -1,7 +1,10 @@
+import { MainComponent } from "@/components/MainComponent"
+
 export default function PrivacyPolicy() {
     return (
         <div className="bg-white">
-            <div className="flex flex-col p-5 sm:p-10 max-w-4xl">
+            <MainComponent className="max-w-4xl">
+
                 <h1 className="text-3xl sm:text-4xl font-bold">
                     Privacy policy
                 </h1>
@@ -23,7 +26,8 @@ export default function PrivacyPolicy() {
 
                     You can visit the website without telling us who you are or revealing any information by which someone could identify you as a specific, identifiable individual. If, however, you wish to use some of the website&apos;s features, or you wish to receive our newsletter or provide other details by filling out a form, you may provide personal data to us, such as your email, name, last name, city of residence, organization, telephone number. You can choose not to provide us with your personal data, but then you may not be able to take advantage of some of the website&apos;s features, for example, you won&apos;t be able to receive our newsletter or contact us directly from the website.
                 </p>
-            </div>
-        </div>
+
+            </MainComponent >
+        </div >
     )
 }
