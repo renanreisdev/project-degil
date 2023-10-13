@@ -69,6 +69,7 @@ export const ContactForm = () => {
                     type="email"
                     label="Deixe o seu melhor e-mail*"
                     placeholder="engenharia.degil@gmail.com"
+                    helperText={errors?.email?.message}
                     {...register("email")}
                 />
 
