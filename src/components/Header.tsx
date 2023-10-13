@@ -7,6 +7,7 @@ import Link from "next/link";
 import { AiOutlineMenu, AiOutlineWhatsApp, AiOutlineHome, AiOutlineFileSearch, AiOutlineClose } from 'react-icons/ai';
 import logo from "@/assets/degil.png"
 import { config } from "../../config.local"
+import { LinkComponent } from "./LinkComponet";
 
 export const Header = () => {
     const [nav, setNav] = useState(false);
@@ -31,27 +32,27 @@ export const Header = () => {
                             />
 
                             <nav className="sm:hidden transition-all duration-1000 py-5 flex flex-col justify-end items-center gap-5 uppercase text-white font-bold">
-                                <Link
+                                <LinkComponent
+                                    model="nav"
                                     href="/"
                                     target="_self"
-                                    className="relative py-1 flex items-center gap-1 transition-all duration-500 hover:text-orange-600 after:transition-all after:duration-500 after:content-[' '] after:absolute after:w-0 after:h-[2px] after:bg-orange-600 after:bottom-0 after:left-0 hover:after:w-full"
                                 >
                                     <AiOutlineHome size={24} /> Home
-                                </Link>
-                                <Link
+                                </LinkComponent>
+                                <LinkComponent
+                                    model="nav"
                                     href="/vistorias"
                                     target="_self"
-                                    className="relative py-1 flex items-center gap-1 transition-all duration-500 hover:text-orange-600 after:transition-all after:duration-500 after:content-[' '] after:absolute after:w-0 after:h-[2px] after:bg-orange-600 after:bottom-0 after:left-0 hover:after:w-full"
                                 >
                                     <AiOutlineFileSearch size={24} /> Vistoria
-                                </Link>
-                                <Link
+                                </LinkComponent>
+                                <LinkComponent
+                                    model="nav"
                                     href={`http://wa.me/55${config.PHONE}`}
                                     target="_blank"
-                                    className="relative py-1 flex items-center gap-1 transition-all duration-500 hover:text-orange-600 after:transition-all after:duration-500 after:content-[' '] after:absolute after:w-0 after:h-[2px] after:bg-orange-600 after:bottom-0 after:left-0 hover:after:w-full"
                                 >
                                     <AiOutlineWhatsApp size={24} /> Contato
-                                </Link>
+                                </LinkComponent>
                             </nav>
                         </>
                     ) : (
@@ -66,27 +67,27 @@ export const Header = () => {
                 }
 
                 <nav className="sm:flex hidden flex-1 justify-end items-center gap-5 uppercase text-white font-bold">
-                    <Link
+                    <LinkComponent
+                        model="nav"
                         href="/"
                         target="_self"
-                        className="relative py-1 flex items-center gap-1 transition-all duration-500 hover:text-orange-600 after:transition-all after:duration-500 after:content-[' '] after:absolute after:w-0 after:h-[2px] after:bg-orange-600 after:bottom-0 after:left-0 hover:after:w-full"
                     >
                         <AiOutlineHome size={24} /> Home
-                    </Link>
-                    <Link
+                    </LinkComponent>
+                    <LinkComponent
+                        model="nav"
                         href="/vistorias"
                         target="_self"
-                        className="relative py-1 flex items-center gap-1 transition-all duration-500 hover:text-orange-600 after:transition-all after:duration-500 after:content-[' '] after:absolute after:w-0 after:h-[2px] after:bg-orange-600 after:bottom-0 after:left-0 hover:after:w-full"
                     >
                         <AiOutlineFileSearch size={24} /> Vistoria
-                    </Link>
-                    <Link
+                    </LinkComponent>
+                    <LinkComponent
+                        model="nav"
                         href={`http://wa.me/55${config.PHONE}`}
                         target="_blank"
-                        className="relative py-1 flex items-center gap-1 transition-all duration-500 hover:text-orange-600 after:transition-all after:duration-500 after:content-[' '] after:absolute after:w-0 after:h-[2px] after:bg-orange-600 after:bottom-0 after:left-0 hover:after:w-full"
                     >
                         <AiOutlineWhatsApp size={24} /> Contato
-                    </Link>
+                    </LinkComponent>
                 </nav>
             </header>
         </div>

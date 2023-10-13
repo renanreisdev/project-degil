@@ -1,5 +1,5 @@
-import { formDataType } from '../types/FormDataType'
 import { config } from '../../config.local'
+import { FormDataProps } from '@/app/vistorias/page'
 
 const initialM2 = config.INITIAL_M2
 const initialPrice = config.INITIAL_PRICE
@@ -8,7 +8,7 @@ const semiFurnished = config.SEMI_FURNISHED
 const furnished = config.FURNISHED
 const courtyard = config.COUTYARD
 
-export const calculateInspectionPrice = (data: formDataType) => {
+export const calculateInspectionPrice = (data: FormDataProps) => {
     const { propertyArea, hasFurniture, hasCourtyard } = data
 
     const furniture = hasFurniture === 'semiFurnished' ? semiFurnished : hasFurniture === 'furnished' ? furnished : 0
