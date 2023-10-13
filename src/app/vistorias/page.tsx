@@ -128,6 +128,14 @@ export default function Inspections() {
       requesterName
     )
 
+    setHasEmailBeenSent(true)
+    setIsSendingEmail(false)
+    setEmailResponse(response.message)
+
+    setTimeout(() => {
+      setHasEmailBeenSent(false)
+    }, 4000)
+
     if (response.status) {
       setValue("address", "")
       setValue("addressComplement", "")
@@ -143,18 +151,7 @@ export default function Inspections() {
       setValue("requesterEmail", "")
       setValue("requesterName", "")
       setValue("zipCode", "")
-
-      setIsSendingEmail(false)
-      setHasEmailBeenSent(true)
-
-      setTimeout(() => {
-        setHasEmailBeenSent(false)
-      }, 4000)
-    } else {
-      setIsSendingEmail(false)
-      setHasEmailBeenSent(false)
     }
-    setEmailResponse(response.message)
   }
 
 
@@ -186,7 +183,7 @@ export default function Inspections() {
       <Header />
       <MainComponent className="items-center">
         {hasEmailBeenSent && (
-          <NotificationsComponent size="md" position="bottom-right">{emailResponse}</NotificationsComponent>
+          <NotificationsComponent size="md" position="bottom-right" className={`${emailResponse.includes("Falha") ? 'bg-red-500' : ''}`}>{emailResponse}</NotificationsComponent>
         )}
 
         <PageTitle title="Vistorias" />

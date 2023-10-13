@@ -36,21 +36,18 @@ export const ContactForm = () => {
 
         const response = await sendEmail(subject, data.email, data.message)
 
+        setHasEmailBeenSent(true)
+        setIsSendingEmail(false)
+        setEmailResponse(response.message)
+
+        setTimeout(() => {
+            setHasEmailBeenSent(false)
+        }, 4000)
+
         if (response.status) {
             setValue("email", "")
             setValue("message", "")
-
-            setIsSendingEmail(false)
-            setHasEmailBeenSent(true)
-
-            setTimeout(() => {
-                setHasEmailBeenSent(false)
-            }, 4000)
-        } else {
-            setIsSendingEmail(false)
-            setHasEmailBeenSent(false)
         }
-        setEmailResponse(response.message)
     }
 
     return (
@@ -61,7 +58,7 @@ export const ContactForm = () => {
 
             <div className="relative w-full max-w-lg flex flex-col gap-10 p-5 mt-10 rounded bg-slate-50 shadow-md">
                 {hasEmailBeenSent && (
-                    <NotificationsComponent size="md" position="bottom-right">{emailResponse}</NotificationsComponent>
+                    <NotificationsComponent size="md" position="bottom-right" className={`${emailResponse.includes("Falha") ? 'bg-red-500' : ''}`}>{emailResponse}</NotificationsComponent>
                 )}
 
                 <Input
