@@ -18,6 +18,7 @@ import { sendEmail } from "@/utils/sendEmail"
 import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType } from "@/utils/selectOptions"
 import { PageTitle } from "@/components/PageTitle"
 import { MainComponent } from "@/components/MainComponent"
+import { Header } from "@/components/Header"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
@@ -181,188 +182,191 @@ export default function Inspections() {
   }
 
   return (
-    <MainComponent className="items-center">
-      {hasEmailBeenSent && (
-        <NotificationsComponent size="md" position="bottom-right">{emailResponse}</NotificationsComponent>
-      )}
+    <>
+      <Header />
+      <MainComponent className="items-center">
+        {hasEmailBeenSent && (
+          <NotificationsComponent size="md" position="bottom-right">{emailResponse}</NotificationsComponent>
+        )}
 
-      <PageTitle title="Vistorias" />
-      <div className="w-full max-w-3xl grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
-        <h2 className="text-xl text-center text-secondary font-bold xs:col-span-2">Faça uma simulação</h2>
+        <PageTitle title="Vistorias" />
+        <div className="w-full max-w-3xl grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
+          <h2 className="text-xl text-center text-secondary font-bold xs:col-span-2">Faça uma simulação</h2>
 
-        <h2 className="text-lg mb-1 xs:col-span-2">Dados pessoais</h2>
+          <h2 className="text-lg mb-1 xs:col-span-2">Dados pessoais</h2>
 
-        <Input
-          disabled={isSendingEmail}
-          label="Nome do solicitante"
-          placeholder="Digite o nome do solicitante"
-          classNameDiv="xs:col-span-2"
-          helperText={errors?.requesterName?.message}
-          {...register("requesterName")}
-        />
-
-        <Input
-          disabled={isSendingEmail}
-          label="E-mail do solicitante"
-          placeholder="Digite seu melhor e-mail"
-          classNameDiv="xs:col-span-2"
-          helperText={errors?.requesterEmail?.message}
-          {...register("requesterEmail")}
-        />
-
-        <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Endereço do imóvel para vistoria</h2>
-
-        <Input
-          disabled={isSendingEmail}
-          label="Código do imóvel"
-          placeholder="Código do imóvel"
-          helperText={errors?.propertyCode?.message}
-          {...register("propertyCode")}
-        />
-
-        <MaskedInput
-          disabled={isSendingEmail}
-          mask="99999-999"
-          label="CEP do imóvel"
-          placeholder="Digite o CEP do imóvel"
-          helperText={errors?.zipCode?.message}
-          {...register("zipCode", { onBlur: (e) => { handleZipCodeFetch(e.target.value.replace('-', '')) } })}
-        />
-
-        <Input
-          disabled={isSendingEmail}
-          label="Cidade"
-          placeholder="Cidade"
-          helperText={errors?.city?.message}
-          {...register("city")}
-        />
-
-        <Input
-          disabled={isSendingEmail}
-          label="Bairro"
-          placeholder="Bairro"
-          helperText={errors?.neighborhood?.message}
-          {...register("neighborhood")}
-        />
-
-        <Input
-          disabled={isSendingEmail}
-          label="Endereço"
-          placeholder="Endereço"
-          helperText={errors?.address?.message}
-          {...register("address")}
-          classNameDiv="xs:col-span-2"
-        />
-
-        <Input
-          disabled={isSendingEmail}
-          type="number"
-          maxLength={6}
-          label="Número"
-          placeholder="Número"
-          helperText={errors?.addressNumber?.message}
-          {...register("addressNumber")}
-        />
-
-        <Input
-          disabled={isSendingEmail}
-          label="Complemento"
-          placeholder="Complemento"
-          {...register("addressComplement")}
-        />
-
-        <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Dados do imóvel para vistoria</h2>
-
-        <Input
-          disabled={isSendingEmail}
-          type="number"
-          min={1}
-          max={99999}
-          maxLength={5}
-          label="Área do imóvel (m²)"
-          placeholder="Área do imóvel (m²)"
-          helperText={errors?.propertyArea?.message}
-          {...register("propertyArea")}
-        />
-
-        <InputRadioContainer
-          label="Imóvel possui mobílias"
-          helperText={errors?.hasFurniture?.message}
-        >
-          {optionsHasFurniture.map((option) => (
-            <Input
-              key={option.value}
-              disabled={isSendingEmail}
-              type="radio"
-              isRadioInput={true}
-              label={option.label}
-              value={option.value}
-              helperText={errors?.hasFurniture?.message}
-              {...register("hasFurniture")}
-            />
-          ))}
-        </InputRadioContainer>
-
-        <InputRadioContainer
-          label="Imóvel possui pátio"
-          helperText={errors?.hasCourtyard?.message}
-        >
-          {optionsHasCourtyard.map((option) => (
-            <Input
-              key={option.value}
-              disabled={isSendingEmail}
-              type="radio"
-              isRadioInput={true}
-              label={option.label}
-              value={option.value}
-              helperText={errors?.hasCourtyard?.message}
-              {...register("hasCourtyard")}
-            />
-          ))}
-        </InputRadioContainer>
-
-        <InputRadioContainer
-          label="Tipo de vistoria"
-          helperText={errors?.inspectionType?.message}
-        >
-          {optionsInspectionType.map((option) => (
-            <Input
-              key={option.value}
-              disabled={isSendingEmail}
-              type="radio"
-              isRadioInput={true}
-              label={option.label}
-              value={option.value}
-              helperText={errors?.inspectionType?.message}
-              {...register("inspectionType")}
-            />
-          ))}
-        </InputRadioContainer>
-
-        <Input
-          disabled={isSendingEmail}
-          type="date"
-          label="Data de vigência"
-          classNameDiv="xs:col-span-2"
-          min={currentDate}
-          placeholder="Data de vigência"
-          helperText={errors?.effectivenessDate?.message}
-          {...register("effectivenessDate")}
-        />
-
-        {!isSendingEmail && (
-          <ButtonComponent
-            onClick={() => handleSubmit(onSubmit)()}
-            className="xs:col-span-2 m-auto mt-10"
+          <Input
+            disabled={isSendingEmail}
+            label="Nome do solicitante"
+            placeholder="Digite o nome do solicitante"
+            classNameDiv="xs:col-span-2"
+            helperText={errors?.requesterName?.message}
+            {...register("requesterName")}
           />
-        )}
 
-        {isSendingEmail && (
-          <NotificationsComponent className="xs:col-span-2 m-auto mt-10">
-            <AiOutlineLoading size={24} className="animate-spin" /> Enviando e-mail...
-          </NotificationsComponent>
-        )}
-      </div>
-    </MainComponent>
+          <Input
+            disabled={isSendingEmail}
+            label="E-mail do solicitante"
+            placeholder="Digite seu melhor e-mail"
+            classNameDiv="xs:col-span-2"
+            helperText={errors?.requesterEmail?.message}
+            {...register("requesterEmail")}
+          />
+
+          <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Endereço do imóvel para vistoria</h2>
+
+          <Input
+            disabled={isSendingEmail}
+            label="Código do imóvel"
+            placeholder="Código do imóvel"
+            helperText={errors?.propertyCode?.message}
+            {...register("propertyCode")}
+          />
+
+          <MaskedInput
+            disabled={isSendingEmail}
+            mask="99999-999"
+            label="CEP do imóvel"
+            placeholder="Digite o CEP do imóvel"
+            helperText={errors?.zipCode?.message}
+            {...register("zipCode", { onBlur: (e) => { handleZipCodeFetch(e.target.value.replace('-', '')) } })}
+          />
+
+          <Input
+            disabled={isSendingEmail}
+            label="Cidade"
+            placeholder="Cidade"
+            helperText={errors?.city?.message}
+            {...register("city")}
+          />
+
+          <Input
+            disabled={isSendingEmail}
+            label="Bairro"
+            placeholder="Bairro"
+            helperText={errors?.neighborhood?.message}
+            {...register("neighborhood")}
+          />
+
+          <Input
+            disabled={isSendingEmail}
+            label="Endereço"
+            placeholder="Endereço"
+            helperText={errors?.address?.message}
+            {...register("address")}
+            classNameDiv="xs:col-span-2"
+          />
+
+          <Input
+            disabled={isSendingEmail}
+            type="number"
+            maxLength={6}
+            label="Número"
+            placeholder="Número"
+            helperText={errors?.addressNumber?.message}
+            {...register("addressNumber")}
+          />
+
+          <Input
+            disabled={isSendingEmail}
+            label="Complemento"
+            placeholder="Complemento"
+            {...register("addressComplement")}
+          />
+
+          <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Dados do imóvel para vistoria</h2>
+
+          <Input
+            disabled={isSendingEmail}
+            type="number"
+            min={1}
+            max={99999}
+            maxLength={5}
+            label="Área do imóvel (m²)"
+            placeholder="Área do imóvel (m²)"
+            helperText={errors?.propertyArea?.message}
+            {...register("propertyArea")}
+          />
+
+          <InputRadioContainer
+            label="Imóvel possui mobílias"
+            helperText={errors?.hasFurniture?.message}
+          >
+            {optionsHasFurniture.map((option) => (
+              <Input
+                key={option.value}
+                disabled={isSendingEmail}
+                type="radio"
+                isRadioInput={true}
+                label={option.label}
+                value={option.value}
+                helperText={errors?.hasFurniture?.message}
+                {...register("hasFurniture")}
+              />
+            ))}
+          </InputRadioContainer>
+
+          <InputRadioContainer
+            label="Imóvel possui pátio"
+            helperText={errors?.hasCourtyard?.message}
+          >
+            {optionsHasCourtyard.map((option) => (
+              <Input
+                key={option.value}
+                disabled={isSendingEmail}
+                type="radio"
+                isRadioInput={true}
+                label={option.label}
+                value={option.value}
+                helperText={errors?.hasCourtyard?.message}
+                {...register("hasCourtyard")}
+              />
+            ))}
+          </InputRadioContainer>
+
+          <InputRadioContainer
+            label="Tipo de vistoria"
+            helperText={errors?.inspectionType?.message}
+          >
+            {optionsInspectionType.map((option) => (
+              <Input
+                key={option.value}
+                disabled={isSendingEmail}
+                type="radio"
+                isRadioInput={true}
+                label={option.label}
+                value={option.value}
+                helperText={errors?.inspectionType?.message}
+                {...register("inspectionType")}
+              />
+            ))}
+          </InputRadioContainer>
+
+          <Input
+            disabled={isSendingEmail}
+            type="date"
+            label="Data de vigência"
+            classNameDiv="xs:col-span-2"
+            min={currentDate}
+            placeholder="Data de vigência"
+            helperText={errors?.effectivenessDate?.message}
+            {...register("effectivenessDate")}
+          />
+
+          {!isSendingEmail && (
+            <ButtonComponent
+              onClick={() => handleSubmit(onSubmit)()}
+              className="xs:col-span-2 m-auto mt-10"
+            />
+          )}
+
+          {isSendingEmail && (
+            <NotificationsComponent className="xs:col-span-2 m-auto mt-10">
+              <AiOutlineLoading size={24} className="animate-spin" /> Enviando e-mail...
+            </NotificationsComponent>
+          )}
+        </div>
+      </MainComponent>
+    </>
   )
 }
