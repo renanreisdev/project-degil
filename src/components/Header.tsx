@@ -29,7 +29,7 @@ export const Header = () => {
                         <>
                             <AiOutlineClose
                                 onClick={handleNav}
-                                className="2md:hidden text-white absolute top-6 right-6 z-10"
+                                className="2md:hidden text-white absolute top-6 right-6 z-10 cursor-pointer"
                                 size={30}
                             />
 
@@ -77,7 +77,7 @@ export const Header = () => {
                         <>
                             <AiOutlineMenu
                                 onClick={handleNav}
-                                className="2md:hidden text-white absolute top-6 right-6 z-10"
+                                className="2md:hidden text-white absolute top-6 right-6 z-10 pointer"
                                 size={30}
                             />
                         </>
