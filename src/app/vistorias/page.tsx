@@ -15,7 +15,7 @@ import { emailMessage as defaultEmailMessage, whatsappMessage as defaultWhatsapp
 import { ButtonComponent } from "@/components/ButtonComponent"
 import { NotificationsComponent } from "@/components/NotificationsComponent"
 import { sendEmail } from "@/utils/sendEmail"
-import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType, optionsPropertyType } from "@/utils/selectOptions"
+import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType } from "@/utils/selectOptions"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
@@ -36,9 +36,6 @@ const schema = z.object({
     .min(3, { message: "O endereço deve ter pelo menos 3 caracteres" }),
   addressNumber: z.string()
     .min(1, { message: "O número é obrigatório" }),
-  propertyType: z.string({ invalid_type_error: "Selecione o tipo do imóvel" })
-    .min(1, { message: "Selecione uma opção" })
-    .refine((value) => optionsPropertyType.some((option) => option.value === value)),
   addressComplement: z.string(),
   propertyArea: z.string()
     .min(1, { message: "Entre com um número entre 1 e 99999" }).max(99999, { message: "Entre com um valo entre 1 e 99999" }),
@@ -71,9 +68,8 @@ export default function Inspections() {
   const onSubmit = async (data: FormDataProps) => {
     const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculateInspectionPrice(data))
 
-    const { requesterName, requesterEmail, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyType, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType } = data
+    const { requesterName, requesterEmail, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType } = data
 
-    const houseType = propertyType === 'house' ? "Casa" : "Apartamento"
     const furniture = hasFurniture === 'semiFurnished' ? "Semimobiliado" : hasFurniture === 'furnished' ? "Mobiliado" : "Sem mobília"
     const courtyard = hasCourtyard === 'yes' ? "Sim" : "Não"
     const inspection = inspectionType === 'entry' ? "Entrada" : "Saída"
@@ -89,7 +85,6 @@ export default function Inspections() {
       address,
       addressNumber,
       addressComplement,
-      propertyType: houseType,
       propertyArea,
       furniture,
       courtyard,
@@ -108,7 +103,6 @@ export default function Inspections() {
       address,
       addressNumber,
       addressComplement,
-      propertyType: houseType,
       propertyArea,
       furniture,
       courtyard,
@@ -143,7 +137,6 @@ export default function Inspections() {
       setValue("neighborhood", "")
       setValue("propertyArea", "")
       setValue("propertyCode", "")
-      setValue("propertyType", null!)
       setValue("requesterEmail", "")
       setValue("requesterName", "")
       setValue("zipCode", "")
@@ -185,17 +178,13 @@ export default function Inspections() {
     }
   }
 
-  const handleInputPropertyTypeChange = (target: HTMLInputElement) => {
-    setValue("hasCourtyard", target.value === "apartment" ? "no" : null!)
-  }
-
   return (
     <div className="flex flex-col items-center p-3 sm:p-10">
       {hasEmailBeenSent && (
         <NotificationsComponent size="md" position="bottom-right">{emailResponse}</NotificationsComponent>
       )}
 
-      <h1 className="self-start text-3xl text-pageTitle">Vistorias</h1>
+      <h1 className="self-start text-3xl text-primary">Vistorias</h1>
       <span className="block w-full h-2 my-4 bg-secondary" />
       <div className="w-full max-w-3xl grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
         <h2 className="text-xl text-center text-secondary font-bold xs:col-span-2">Faça uma simulação</h2>
@@ -283,24 +272,6 @@ export default function Inspections() {
 
         <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Dados do imóvel para vistoria</h2>
 
-        <InputRadioContainer
-          label="Tipo do imóvel"
-          helperText={errors?.propertyType?.message}
-        >
-          {optionsPropertyType.map((option) => (
-            <Input
-              key={option.value}
-              disabled={isSendingEmail}
-              type="radio"
-              isRadioInput={true}
-              label={option.label}
-              value={option.value}
-              helperText={errors?.propertyType?.message}
-              {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target) })}
-            />
-          ))}
-        </InputRadioContainer>
-
         <Input
           disabled={isSendingEmail}
           type="number"
@@ -349,16 +320,6 @@ export default function Inspections() {
           ))}
         </InputRadioContainer>
 
-        <Input
-          disabled={isSendingEmail}
-          type="date"
-          label="Data de vigência"
-          min={currentDate}
-          placeholder="Data de vigência"
-          helperText={errors?.effectivenessDate?.message}
-          {...register("effectivenessDate")}
-        />
-
         <InputRadioContainer
           label="Tipo de vistoria"
           helperText={errors?.inspectionType?.message}
@@ -376,6 +337,17 @@ export default function Inspections() {
             />
           ))}
         </InputRadioContainer>
+
+        <Input
+          disabled={isSendingEmail}
+          type="date"
+          label="Data de vigência"
+          classNameDiv="xs:col-span-2"
+          min={currentDate}
+          placeholder="Data de vigência"
+          helperText={errors?.effectivenessDate?.message}
+          {...register("effectivenessDate")}
+        />
 
         {!isSendingEmail && (
           <ButtonComponent

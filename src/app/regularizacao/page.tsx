@@ -1,4 +1,4 @@
-import { LinkComponent } from "@/components/LinkComponet";
+import { LinkComponent } from "@/components/LinkComponent";
 import Link from "next/link";
 
 export default function Regularization() {

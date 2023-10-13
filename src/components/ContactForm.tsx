@@ -9,7 +9,7 @@ import { Input } from "@/components/Input"
 import { TextAreaComponent } from "./TextAreaComponent"
 import { ButtonComponent } from "./ButtonComponent"
 import { NotificationsComponent } from "./NotificationsComponent"
-import { LinkComponent } from "./LinkComponet"
+import { LinkComponent } from "./LinkComponent"
 import { sendEmail } from "@/utils/sendEmail"
 
 const schema = z.object({
