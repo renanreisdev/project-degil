@@ -1,28 +1,69 @@
 "use client"
 
 import { useForm } from "react-hook-form"
+import { useEffect, useState } from "react"
 import validator from "validator"
-import InputMask from "react-input-mask"
-import { formDataType } from "@/types/FormDataType"
 import { config } from "../../../config.local"
 import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
-import { useEffect, useState } from "react"
 import { AiOutlineLoading } from "react-icons/ai"
+import { Input } from "@/components/Input"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { InputRadioContainer } from "@/components/InputRadioContainer"
+import { MaskedInput } from "@/components/MaskedInput/MaskedInput"
+import { emailMessage as defaultEmailMessage, whatsappMessage as defaultWhatsappMessage } from "@/utils/messageTemplates"
+import { ButtonComponent } from "@/components/ButtonComponent"
+import { NotificationsComponent } from "@/components/NotificationsComponent"
+import { sendEmail } from "@/utils/sendEmail"
+
+const currentDate = new Date().toISOString().split("T")[0];
+
+const schema = z.object({
+  requesterName: z.string()
+    .min(3, { message: "O nome deve ter pelo menos 3 caracteres" }).transform((value) => value.trim()),
+  requesterEmail: z.string()
+    .email({ message: "Digite um e-mail válido" }),
+  propertyCode: z.string()
+    .min(3, { message: "O código deve ter pelo menos 3 números" }),
+  zipCode: z.string()
+    .min(1, { message: "O CEP é obrigatório" }).refine((value) => validator.isPostalCode(value, "BR"), { message: "O CEP deve ser válido" }),
+  city: z.string()
+    .min(3, { message: "A cidade deve ter pelo menos 3 caracteres" }),
+  neighborhood: z.string()
+    .min(3, { message: "O bairro deve ter pelo menos 3 caracteres" }),
+  address: z.string()
+    .min(3, { message: "O endereço deve ter pelo menos 3 caracteres" }),
+  addressNumber: z.string()
+    .min(1, { message: "O número é obrigatório" }),
+  propertyType: z.string({ invalid_type_error: "Selecione o tipo do imóvel" })
+    .refine((value) => ["apartment", "house"].includes(value)),
+  addressComplement: z.string(),
+  propertyArea: z.string()
+    .min(1, { message: "Entre com um número entre 1 e 99999" }).max(99999, { message: "Entre com um valo entre 1 e 99999" }),
+  hasFurniture: z.string({ invalid_type_error: "Selecione uma opção" })
+    .refine((value) => ["semiFurnished", "furnished", "unfurnished"].includes(value)),
+  hasCourtyard: z.string({ invalid_type_error: "Selecione uma opção" })
+    .refine((value) => ["yes", "no"].includes(value)),
+  effectivenessDate: z.string()
+    .min(1, { message: "A data deve ser preenchida" })
+    .refine((value) => value >= currentDate, { message: "A data deve ser maior ou igual à data atual" }),
+  inspectionType: z.string({ invalid_type_error: "Selecione uma opção" })
+    .refine((value) => ["entry", "exit"].includes(value)),
+})
+
+export type FormDataProps = z.infer<typeof schema>
 
 export default function Inspections() {
-  const { register, handleSubmit, setValue, formState: { errors }, } = useForm<formDataType>()
+  const { register, handleSubmit, setValue, getValues, formState: { errors }, } = useForm<FormDataProps>({
+    mode: "onBlur",
+    resolver: zodResolver(schema)
+  })
 
-  console.log(errors)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [hasEmailBeenSent, setHasEmailBeenSent] = useState(false)
+  const [emailResponse, setEmailResponse] = useState('')
 
-  const [sendingEmailState, setSendingEmailState] = useState(false)
-  const [emailSentState, setEmailSentState] = useState(false)
-  const [emailResponseState, setEmailResponseState] = useState('')
-
-  const [isApartmentState, setIsApartmentState] = useState('house')
-
-  const currentDate = new Date().toISOString().split("T")[0];
-
-  const onSubmit = async (data: formDataType) => {
+  const onSubmit = async (data: FormDataProps) => {
     const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculateInspectionPrice(data))
 
     const { requesterName, requesterEmail, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyType, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType } = data
@@ -33,141 +74,90 @@ export default function Inspections() {
     const inspection = inspectionType === 'entry' ? "Entrada" : "Saída"
     const formattedDate = new Date(effectivenessDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 
-    const messageEmail = `<style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-</style>
-<div
-    style="display: block; margin: 10px auto; width: 100%; max-width: 860px; padding: 20px; border-radius: 10px; box-shadow: 2px 2px 2px #333333; background-color: #f1f6fd;">
-    <p>
-        Olá! Meu nome é <b>${requesterName}</b>, acabei de realizar uma simulação no seu site e gostaria de mais
-        informações, aqui está o resultado da simulação:
-    </p>
+    const emailMessage = defaultEmailMessage({
+      name: requesterName,
+      email: requesterEmail,
+      propertyCode,
+      zipCode,
+      city,
+      neighborhood,
+      address,
+      addressNumber,
+      addressComplement,
+      propertyType: houseType,
+      propertyArea,
+      furniture,
+      courtyard,
+      effectivenessDate: formattedDate,
+      inspectionType: inspection,
+      price: price
+    })
 
-    <div style="margin-top: 30px; padding: 10px; border: 1px solid #eee; border-radius: 5px;">
-        <div style="position: relative; display: inline-block; width: 100%; height: 70px;">
-            <div style="position: absolute; top: 0; left: 0; display: inline-block;">
-                <h3 style="display: inline-block;">Dados do cliente</h3>
-            </div>
+    const whatsappMessage = defaultWhatsappMessage({
+      name: requesterName,
+      email: requesterEmail,
+      propertyCode,
+      zipCode,
+      city,
+      neighborhood,
+      address,
+      addressNumber,
+      addressComplement,
+      propertyType: houseType,
+      propertyArea,
+      furniture,
+      courtyard,
+      effectivenessDate: formattedDate,
+      inspectionType: inspection,
+      price: price
+    })
 
-            <div style="float: right; display: block;">
-                <div style="display: inline-block; margin-right: 30px;">
-                    <p style="color: #03466e; font-weight: 700;"><b>Data de Vigência</b></p>
-                    <p>${formattedDate}</p>
-                </div>
-
-                <div style="display: inline-block;">
-                    <p style="color: #03466e; font-weight: 700;"><b>Tipo de vistoria</b></p>
-                    <p>${inspection}</p>
-                </div>
-            </div>
-        </div>
-
-        <div style="display: inline-block; width: 100%;">
-            <div style="display: inline-block; width: 40%;">
-                <p style="margin-top: 10px; margin-bottom: 5px;"><b>Nome</b>: ${requesterName}</p>
-                <p><b>Email</b>: ${requesterEmail}</p>
-            </div>
-
-            <div style="float: right; display: block; width: 40%; text-align: center;">
-                <p style="color: #03466e; font-weight: 700; font-size: 20px;"><b>Valor da
-                        Vistoria</b></p>
-                <p style="color: #ed631d; font-weight: 700; font-size: 24px;">${price}</p>
-            </div>
-        </div>
-    </div>
-
-    <div style="margin-top: 15px; padding: 10px; border: 1px solid #eee; border-radius: 5px;">
-        <div style="display: inline-block; width: 100%;">
-            <h3 style="margin-bottom: 25px;">Endereço do imóvel</h3>
-            <p><b>Código do imóvel</b>: ${propertyCode}</p>
-            <p><b>CEP</b>: ${zipCode}</p>
-            <p><b>Cidade</b>: ${city}</p>
-            <p><b>Bairro</b>: ${neighborhood}</p>
-            <p><b>Endereço</b>: ${address}</p>
-            <p><b>Número</b>: ${addressNumber}</p>
-            <p><b>Complemento</b>: ${addressComplement}</p>
-        </div>
-    </div>
-    <div style="margin-top: 15px; padding: 10px; border: 1px solid #eee; border-radius: 5px;">
-        <div style="display: inline-block; width: 100%;">
-            <h3 style="margin-bottom: 25px;">Dados da vistoria</h3>
-            <p><b>Tipo de imóvel</b>: ${houseType}</p>
-            <p><b>Área do imóvel</b>: ${propertyArea}m²</p>
-            <p><b>Possui mobília</b>: ${furniture}</p>
-            <p><b>Possui pátio</b>: ${courtyard}</p>
-        </div>
-    </div>
-</div>`
-
-    const messageWhats = `Olá! Acabei de realizar uma simulação no seu site e gostaria de mais informações, aqui está o resultado da simulação:
-    \n*--- Dados do contato ---*\n*Nome*: ${requesterName}\n*Email*: ${requesterEmail}\n\n*--- Dados de endereço ---*\n*CEP*: ${zipCode}\n*Cidade*: ${city}\n*Bairro*: ${neighborhood}\n*Endereço*: ${address}\n*Número*: ${addressNumber}\n*Complemento*: ${addressComplement}\n\n*--- Dados da vistoria ---*\n*Código do imóvel*: ${propertyCode}\n*Tipo de imóvel*: ${houseType}\n*Área do imóvel*: ${propertyArea}m²\n*Possui mobília*: ${furniture}\n*Possui pátio*: ${courtyard}\n*Data de Vigência*: ${formattedDate}\n*Tipo de vistoria*: ${inspection}\n\n*Valor Vistoria: ${price}*`
-
-    const whatsappSend = `https://api.whatsapp.com/send?phone=+55${config.PHONE}&text=${encodeURIComponent(
-      messageWhats)}`
+    const whatsappSend = `https://api.whatsapp.com/send?phone=+55${config.PHONE}&text=${encodeURIComponent(whatsappMessage)}`
 
     window.open(whatsappSend, '_blank')
 
-    try {
-      setSendingEmailState(true)
-      const require = await fetch("/api/sendEmail", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subject: `Simulação de Vistoria - ${requesterName}`,
-          name: requesterName,
-          email: requesterEmail,
-          message: messageEmail
-        })
-      })
+    setIsSendingEmail(true)
+    const subject = `Simulação de Vistoria - ${requesterName}`
 
-      const response = await require.json()
+    const response = await sendEmail(
+      requesterEmail,
+      subject,
+      emailMessage,
+      requesterName
+    )
 
-      if (response.message === "success") {
-        setValue("address", "")
-        setValue("addressComplement", "")
-        setValue("addressNumber", "")
-        setValue("city", "")
-        setValue("effectivenessDate", "")
-        setValue("hasCourtyard", "0")
-        setValue("hasFurniture", "0")
-        setValue("inspectionType", "0")
-        setValue("neighborhood", "")
-        setValue("propertyArea", "")
-        setValue("propertyCode", "")
-        setValue("propertyType", "0")
-        setValue("requesterEmail", "")
-        setValue("requesterName", "")
-        setValue("zipCode", "")
+    if (response.status) {
+      setValue("address", "")
+      setValue("addressComplement", "")
+      setValue("addressNumber", "")
+      setValue("city", "")
+      setValue("effectivenessDate", "")
+      setValue("hasCourtyard", null!)
+      setValue("hasFurniture", null!)
+      setValue("inspectionType", null!)
+      setValue("neighborhood", "")
+      setValue("propertyArea", "")
+      setValue("propertyCode", "")
+      setValue("propertyType", null!)
+      setValue("requesterEmail", "")
+      setValue("requesterName", "")
+      setValue("zipCode", "")
 
-        setEmailResponseState("E-mail enviado com sucesso!")
+      setIsSendingEmail(false)
+      setHasEmailBeenSent(true)
 
-        setSendingEmailState(false)
-        setEmailSentState(true)
-
-        setTimeout(() => {
-          setEmailSentState(false)
-          setEmailResponseState("")
-        }, 4000)
-      } else {
-        setSendingEmailState(false)
-        setEmailSentState(false)
-      }
-
-    } catch (error: any) {
-      console.error(error.message)
-      setSendingEmailState(false)
-      setEmailSentState(false)
-      setEmailResponseState("Falha ao enviar o e-mail!")
+      setTimeout(() => {
+        setHasEmailBeenSent(false)
+      }, 4000)
+    } else {
+      setIsSendingEmail(false)
+      setHasEmailBeenSent(false)
     }
+    setEmailResponse(response.message)
   }
 
-  const handleZipCodeBlur = async (code: string) => {
+
+  const handleZipCodeFetch = async (code: string) => {
     if (String(code).length !== 8 || !validator.isNumeric(String(code))) return
 
     setValue("city", "...")
@@ -190,307 +180,247 @@ export default function Inspections() {
     }
   }
 
-  useEffect(() => {
-    if (isApartmentState === "apartment") {
-      setValue("hasCourtyard", "no")
-    }
-  }, [isApartmentState, setValue])
-
   const handleInputPropertyTypeChange = (target: HTMLInputElement) => {
-    setIsApartmentState(target.value)
+    setValue("hasCourtyard", target.value === "apartment" ? "no" : null!)
   }
 
   return (
     <div className="flex flex-col items-center p-3 sm:p-10">
-      {emailSentState && (
-        <div className="z-10 fixed bottom-5 right-5 bg-primary text-white p-4 rounded shadow-sm transition-all duration-1000 ease-in-out">{emailResponseState}</div>
+      {hasEmailBeenSent && (
+        <NotificationsComponent size="md" position="bottom-right">{emailResponse}</NotificationsComponent>
       )}
 
       <h1 className="self-start text-3xl text-pageTitle">Vistorias</h1>
       <span className="block w-full h-2 my-4 bg-secondary" />
-      <div className="w-full max-w-3xl grid gap-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
+      <div className="w-full max-w-3xl grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
         <h2 className="text-xl text-center text-secondary font-bold xs:col-span-2">Faça uma simulação</h2>
 
-        <h2 className="text-lg xs:col-span-2">Dados pessoais</h2>
+        <h2 className="text-lg mb-1 xs:col-span-2">Dados pessoais</h2>
 
-        <div className="relative flex xs:col-span-2">
-          <input
-            disabled={sendingEmailState}
-            type="text"
-            placeholder="Digite o nome do solicitante"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("requesterName", { required: true })}
+        <Input
+          disabled={isSendingEmail}
+          label="Nome do solicitante"
+          placeholder="Digite o nome do solicitante"
+          classNameDiv="xs:col-span-2"
+          helperText={errors?.requesterName?.message}
+          {...register("requesterName")}
+        />
+
+        <Input
+          disabled={isSendingEmail}
+          label="E-mail do solicitante"
+          placeholder="Digite seu melhor e-mail"
+          classNameDiv="xs:col-span-2"
+          helperText={errors?.requesterEmail?.message}
+          {...register("requesterEmail")}
+        />
+
+        <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Endereço do imóvel para vistoria</h2>
+
+        <Input
+          disabled={isSendingEmail}
+          label="Código do imóvel"
+          placeholder="Código do imóvel"
+          helperText={errors?.propertyCode?.message}
+          {...register("propertyCode")}
+        />
+
+        <MaskedInput
+          disabled={isSendingEmail}
+          mask="99999-999"
+          label="CEP do imóvel"
+          placeholder="Digite o CEP do imóvel"
+          helperText={errors?.zipCode?.message}
+          {...register("zipCode", { onBlur: (e) => { handleZipCodeFetch(e.target.value.replace('-', '')) } })}
+        />
+
+        <Input
+          disabled={isSendingEmail}
+          label="Cidade"
+          placeholder="Cidade"
+          helperText={errors?.city?.message}
+          {...register("city")}
+        />
+
+        <Input
+          disabled={isSendingEmail}
+          label="Bairro"
+          placeholder="Bairro"
+          helperText={errors?.neighborhood?.message}
+          {...register("neighborhood")}
+        />
+
+        <Input
+          disabled={isSendingEmail}
+          label="Endereço"
+          placeholder="Endereço"
+          helperText={errors?.address?.message}
+          {...register("address")}
+          classNameDiv="xs:col-span-2"
+        />
+
+        <Input
+          disabled={isSendingEmail}
+          type="number"
+          maxLength={6}
+          label="Número"
+          placeholder="Número"
+          helperText={errors?.addressNumber?.message}
+          {...register("addressNumber")}
+        />
+
+        <Input
+          disabled={isSendingEmail}
+          label="Complemento"
+          placeholder="Complemento"
+          {...register("addressComplement")}
+        />
+
+        <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Dados do imóvel para vistoria</h2>
+
+        <InputRadioContainer
+          label="Tipo do imóvel"
+          helperText={errors?.propertyType?.message}
+        >
+          <Input
+            disabled={isSendingEmail}
+            type="radio"
+            isRadioInput={true}
+            label="Casa"
+            value={"house"}
+            helperText={errors?.propertyType?.message}
+            {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target) })}
           />
 
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Nome do solicitante</label>
+          <Input
+            disabled={isSendingEmail}
+            type="radio"
+            isRadioInput={true}
+            label="Apartamento"
+            value={"apartment"}
+            helperText={errors?.propertyType?.message}
+            {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target) })}
+          />
+        </InputRadioContainer>
 
-          {errors?.requesterName?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Nome é obrigatório</p>
-          )}
-        </div>
+        <Input
+          disabled={isSendingEmail}
+          type="number"
+          min={1}
+          max={99999}
+          maxLength={5}
+          label="Área do imóvel (m²)"
+          placeholder="Área do imóvel (m²)"
+          helperText={errors?.propertyArea?.message}
+          {...register("propertyArea")}
+        />
 
-        <div className="relative flex xs:col-span-2">
-          <input
-            disabled={sendingEmailState}
-            type="email"
-            placeholder="Digite seu melhor e-mail"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterEmail ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("requesterEmail", { required: true, validate: (value) => validator.isEmail(value) })}
+        <InputRadioContainer
+          label="Imóvel possui mobílias"
+          helperText={errors?.hasFurniture?.message}
+        >
+          <Input
+            disabled={isSendingEmail}
+            type="radio"
+            isRadioInput={true}
+            label="Sem mobília"
+            value={"unfurnished"}
+            helperText={errors?.hasFurniture?.message}
+            {...register("hasFurniture")}
           />
 
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>E-mail do solicitante</label>
-
-          {errors?.requesterEmail?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">E-mail é obrigatório</p>
-          )}
-          {errors?.requesterEmail?.type === "validate" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">E-mail inválido</p>
-          )}
-        </div>
-
-        <h2 className="text-lg mt-2 xs:col-span-2">Dados do imóvel para vistoria</h2>
-
-        <div className="relative flex">
-          <input
-            disabled={sendingEmailState}
-            type="number"
-            maxLength={10}
-            placeholder="Código do imóvel"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.propertyCode ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("propertyCode", { required: true })}
+          <Input
+            disabled={isSendingEmail}
+            type="radio"
+            isRadioInput={true}
+            label="Semimobiliado"
+            value={"semiFurnished"}
+            helperText={errors?.hasFurniture?.message}
+            {...register("hasFurniture")}
           />
 
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Código do imóvel</label>
+          <Input
+            disabled={isSendingEmail}
+            type="radio"
+            isRadioInput={true}
+            label="Mobiliado"
+            value={"furnished"}
+            helperText={errors?.hasFurniture?.message}
+            {...register("hasFurniture")}
+          />
+        </InputRadioContainer>
 
-          {errors?.propertyCode?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Código do imóvel é obrigatório</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <InputMask
-            disabled={sendingEmailState}
-            mask="99999-999"
-            placeholder="Digite o CEP do imóvel"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.zipCode ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("zipCode", { required: true, onBlur: (e) => { handleZipCodeBlur(e.target.value.replace('-', '')) } })}
+        <InputRadioContainer
+          label="Imóvel possui pátio"
+          helperText={errors?.hasCourtyard?.message}
+        >
+          <Input
+            disabled={isSendingEmail ? true : getValues("propertyType") === "apartment" ? true : false}
+            type="radio"
+            isRadioInput={true}
+            label="Sim"
+            value={"yes"}
+            helperText={errors?.hasCourtyard?.message}
+            {...register("hasCourtyard")}
           />
 
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>CEP do imóvel</label>
+          <Input
+            disabled={isSendingEmail ? true : getValues("propertyType") === "apartment" ? true : false}
+            type="radio"
+            isRadioInput={true}
+            label="Não"
+            value={"no"}
+            helperText={errors?.hasCourtyard?.message}
+            {...register("hasCourtyard")}
+          />
+        </InputRadioContainer>
 
-          {errors?.zipCode?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">CEP é obrigatório</p>
-          )}
-        </div>
+        <Input
+          disabled={isSendingEmail}
+          type="date"
+          label="Data de vigência"
+          min={currentDate}
+          placeholder="Data de vigência"
+          helperText={errors?.effectivenessDate?.message}
+          {...register("effectivenessDate")}
+        />
 
-        <div className="relative flex">
-          <input
-            disabled={sendingEmailState}
-            type="text"
-            placeholder="Cidade"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.city ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("city", { required: true })}
+        <InputRadioContainer
+          label="Tipo de vistoria"
+          helperText={errors?.inspectionType?.message}
+        >
+          <Input
+            disabled={isSendingEmail}
+            type="radio"
+            isRadioInput={true}
+            label="Entrada"
+            value={"entry"}
+            helperText={errors?.inspectionType?.message}
+            {...register("inspectionType")}
           />
 
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Cidade</label>
-
-          {errors?.city?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Cidade é obrigatório</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <input
-            disabled={sendingEmailState}
-            type="text"
-            placeholder="Bairro"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.requesterName ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("neighborhood", { required: true })}
+          <Input
+            disabled={isSendingEmail}
+            type="radio"
+            isRadioInput={true}
+            label="Saída"
+            value={"exit"}
+            helperText={errors?.inspectionType?.message}
+            {...register("inspectionType")}
           />
+        </InputRadioContainer>
 
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Bairro</label>
-
-          {errors?.neighborhood?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Bairro é obrigatório</p>
-          )}
-        </div>
-
-        <div className="relative flex xs:col-span-2">
-          <input
-            disabled={sendingEmailState}
-            type="text"
-            placeholder="Endereço"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.address ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("address", { required: true })}
-          />
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Endereço</label>
-
-          {errors?.address?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Endereço é obrigatório</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <input
-            disabled={sendingEmailState}
-            type="number"
-            placeholder="Número"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.addressNumber ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("addressNumber", { required: true })}
-          />
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Número</label>
-
-          {errors?.addressNumber?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Número é obrigatório</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <input
-            disabled={sendingEmailState}
-            type="text"
-            placeholder="Complemento"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear border-slate-400 outline-[#ed631d]`}
-            {...register("addressComplement")}
-          />
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Complemento (opcional)</label>
-
-        </div>
-
-        <div className="relative flex">
-          <select
-            disabled={sendingEmailState}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.propertyType ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("propertyType", { onChange: (e) => handleInputPropertyTypeChange(e.target), validate: (value) => value !== "0" })}
-          >
-            <option value="0" selected disabled ></option>
-            <option value="apartment">Apartamento</option>
-            <option value="house">Casa</option>
-          </select>
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Tipo de imóvel</label>
-
-          {errors?.propertyType?.type === "validate" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Tipo de imóvel é obrigatório</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <input
-            disabled={sendingEmailState}
-            type="number"
-            min={1}
-            max={999999}
-            placeholder="Área do imóvel (m²)"
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.propertyArea ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("propertyArea", { required: true, validate: (value) => Number(value) >= 1 && Number(value) <= 999999 })}
-          />
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Área do imóvel (m²)</label>
-
-          {errors?.propertyArea?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Área do imóvel é obrigatório</p>
-          )}
-
-          {errors?.propertyArea?.type === "validate" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Valores permitidos (1 a 999999)</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <select
-            disabled={sendingEmailState}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.hasFurniture ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("hasFurniture", { validate: (value) => value !== "0" })}
-          >
-            <option value="0" selected disabled></option>
-            <option value="withoutFurniture">Sem mobília</option>
-            <option value="semiFurnished">Semimobiliado</option>
-            <option value="furnished">Mobiliado</option>
-          </select>
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Imóvel possui mobília</label>
-
-          {errors?.hasFurniture?.type === "validate" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Selecionar se possui mobília</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <select
-            disabled={sendingEmailState ? true : isApartmentState === "apartment" ? true : false}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.hasCourtyard ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("hasCourtyard", { validate: (value) => value !== "0" })}
-          >
-            <option value="0" selected={isApartmentState === "apartment" ? false : true} disabled></option>
-            <option value="yes">Sim</option>
-            <option value="no" selected={isApartmentState === "apartment" ? true : false}>Não</option>
-          </select>
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Imóvel possui pátio</label>
-
-          {errors?.hasCourtyard?.type === "validate" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Selecionar se possui pátio</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <input
-            disabled={sendingEmailState}
-            type="date"
-            placeholder="Data de vigência"
-            min={currentDate}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.effectivenessDate ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("effectivenessDate", { required: true, validate: (value) => value >= currentDate })}
-          />
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Data de vigência</label>
-
-          {errors?.effectivenessDate?.type === "required" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Selecionar data de vigência</p>
-          )}
-
-          {errors?.effectivenessDate?.type === "validate" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">A data deve ser igual ou maior que a data atual</p>
-          )}
-        </div>
-
-        <div className="relative flex">
-          <select
-            disabled={sendingEmailState}
-            className={`peer w-full pl-3 pr-1 rounded border p-1 bg-transparent transition-all duration-200 ease-linear ${errors?.inspectionType ? 'border-red-500 outline-red-500' : 'border-slate-400 outline-[#ed631d]'}`}
-            {...register("inspectionType", { validate: (value) => value !== "0" })}
-          >
-            <option value="0" selected disabled></option>
-            <option value="entry">Entrada</option>
-            <option value="exit">Saída</option>
-          </select>
-
-          <label className={`absolute left-2 -top-5 mb-0 origin-[0_0] truncate text-sm leading-[1.6] px-1 text-neutral-500`}>Tipo de vistoria</label>
-
-          {errors?.inspectionType?.type === "validate" && (
-            <p className="absolute -bottom-4 text-xs text-red-500 font-medium">Selecionar tipo de vistoria</p>
-          )}
-        </div>
-
-        {!sendingEmailState && (
-          <button
+        {!isSendingEmail && (
+          <ButtonComponent
             onClick={() => handleSubmit(onSubmit)()}
-            className="m-auto w-full max-w-xs mt-4 p-2 text-white bg-[#ed631d] rounded-lg hover:bg-hover transition-all duration-300 xs:col-span-2"
-          >
-            Enviar
-          </button>
+            className="xs:col-span-2 m-auto mt-10"
+          />
         )}
 
-        {sendingEmailState && (
-          <button
-            className="m-auto w-full max-w-xs mt-4 p-2 text-white rounded-lg bg-hover transition-all duration-300 xs:col-span-2 flex justify-center items-center gap-3"
-          >
-            <AiOutlineLoading size={24} className="animate-spin" /> Enviando...
-          </button>
+        {isSendingEmail && (
+          <NotificationsComponent className="xs:col-span-2 m-auto mt-10">
+            <AiOutlineLoading size={24} className="animate-spin" /> Enviando e-mail...
+          </NotificationsComponent>
         )}
       </div>
     </div>
