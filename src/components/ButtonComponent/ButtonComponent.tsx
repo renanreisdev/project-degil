@@ -2,6 +2,7 @@ import { ButtonHTMLAttributes, forwardRef } from "react"
 import { twMerge } from "tailwind-merge"
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+    children?: React.ReactNode
     buttonModel?: "solid" | "outline"
     buttonSize?: "flex" | "sm" | "md"
     description?: string
@@ -10,6 +11,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export const ButtonComponent = forwardRef<HTMLButtonElement, ButtonProps>(
     ({
+        children,
         type = "submit",
         className,
         buttonModel,
@@ -27,7 +29,7 @@ export const ButtonComponent = forwardRef<HTMLButtonElement, ButtonProps>(
                 className={buttonModel === "outline" ? twMerge(`${size} text-hover font-semibold border border-hover bg-transparent rounded-lg transition-all duration-300 hover:bg-hover hover:text-white`, className) : twMerge(`${size} text-white bg-secondary rounded-lg hover:bg-hover transition-all duration-300`, className)}
                 {...props}
             >
-                {description}
+                {children}
             </button >
         )
     }
