@@ -203,6 +203,9 @@ export default function Inspections() {
     setValue("neighborhood", "...")
     setValue("address", "...")
 
+    const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement
+    const addressNumberInput = document.querySelector('input[name="city"]') as HTMLInputElement
+
     try {
       const response = await fetch(`https://viacep.com.br/ws/${code}/json/`)
       const data = await response.json()
@@ -213,9 +216,9 @@ export default function Inspections() {
       setSearchingZipCode(false)
 
       if (data.erro) {
-        document.querySelector('input[name="city"]')?.focus()
+        cityInput?.select()
       } else {
-        document.querySelector('input[name="addressNumber"]')?.select()
+        addressNumberInput?.select()
       }
 
     } catch (error: any) {
@@ -223,7 +226,7 @@ export default function Inspections() {
       setValue("city", "")
       setValue("neighborhood", "")
       setValue("address", "")
-      document.querySelector('input[name="city"]')?.focus()
+      cityInput?.select()
     } finally {
       setSearchingZipCode(false)
     }
