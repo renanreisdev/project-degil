@@ -5,7 +5,7 @@ import { useState } from "react"
 import validator from "validator"
 import { config } from "../../../config.local"
 import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
-import { AiOutlineLoading } from "react-icons/ai"
+import { AiOutlineCloseCircle, AiOutlineLoading, AiOutlineWhatsApp } from "react-icons/ai"
 import { Input } from "@/components/Input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -15,18 +15,22 @@ import { emailMessage as defaultEmailMessage, whatsappMessage as defaultWhatsapp
 import { ButtonComponent } from "@/components/ButtonComponent"
 import { NotificationsComponent } from "@/components/NotificationsComponent"
 import { sendEmail } from "@/utils/sendEmail"
-import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType } from "@/utils/selectOptions"
+import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType, optionsPropertyType } from "@/utils/selectOptions"
 import { PageTitle } from "@/components/PageTitle"
 import { MainComponent } from "@/components/MainComponent"
 import { Header } from "@/components/Header"
+import { FaRegWindowClose } from "react-icons/fa"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
 const schema = z.object({
   requesterName: z.string()
     .min(3, { message: "O nome deve ter pelo menos 3 caracteres" }).transform((value) => value.trim()),
-  requesterEmail: z.string()
-    .email({ message: "Digite um e-mail válido" }),
+  requesterEmail: z.string().
+    refine((value) => {
+      if (value.length > 0) return validator.isEmail(value);
+      else return true;
+    }, { message: "Digite um e-mail válido" }),
   propertyCode: z.string()
     .min(3, { message: "O código deve ter pelo menos 3 números" }),
   zipCode: z.string()
@@ -65,11 +69,23 @@ export default function Inspections() {
   })
 
   const [isSendingEmail, setIsSendingEmail] = useState(false)
-  const [hasEmailBeenSent, setHasEmailBeenSent] = useState(false)
+  const [hasEmailBeenSent, setHasEmailBeenSent] = useState({ beenSent: false, notification: false })
   const [emailResponse, setEmailResponse] = useState('')
+  const [emailHasBeenCompleted, setEmailHasBeenCompleted] = useState(false)
+  const [searchingZipCode, setSearchingZipCode] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [priceInspection, setPriceInspection] = useState('')
 
-  const onSubmit = async (data: FormDataProps) => {
-    const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculateInspectionPrice(data))
+  const handleCalculateInspectionPrice = (data: FormDataProps) => {
+    setShowModal(true)
+    sendEmailAndWhatsApp(false, data)
+
+    setPriceInspection(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculateInspectionPrice(data)))
+  }
+
+  const sendEmailAndWhatsApp = async (whatsapp: boolean, data: FormDataProps) => {
+    let response = null;
+    const price = priceInspection
 
     const { requesterName, requesterEmail, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType } = data
 
@@ -96,6 +112,11 @@ export default function Inspections() {
       price: price
     })
 
+    let subject = `Simulação de Vistoria - ${requesterName}`
+
+    if (!emailHasBeenCompleted)
+      subject = `Solicitação de Vistoria - ${requesterName}`
+
     const whatsappMessage = defaultWhatsappMessage({
       name: requesterName,
       email: requesterEmail,
@@ -111,32 +132,45 @@ export default function Inspections() {
       courtyard,
       effectivenessDate: formattedDate,
       inspectionType: inspection,
-      price: price
+      price: price,
+      subject
     })
 
     const whatsappSend = `https://api.whatsapp.com/send?phone=+55${config.PHONE}&text=${encodeURIComponent(whatsappMessage)}`
 
-    window.open(whatsappSend, '_blank')
+    if (whatsapp)
+      window.open(whatsappSend, '_blank')
 
-    setIsSendingEmail(true)
-    const subject = `Simulação de Vistoria - ${requesterName}`
+    if (getValues("requesterEmail").length > 0) {
+      setIsSendingEmail(true)
+      setEmailHasBeenCompleted(true)
 
-    const response = await sendEmail(
-      requesterEmail,
-      subject,
-      emailMessage,
-      requesterName
-    )
+      response = await sendEmail(
+        requesterEmail,
+        subject,
+        emailMessage,
+        requesterName
+      )
 
-    setHasEmailBeenSent(true)
-    setIsSendingEmail(false)
-    setEmailResponse(response.message)
+      setHasEmailBeenSent({ beenSent: true, notification: true })
+      setIsSendingEmail(false)
+      setEmailResponse(response.message)
 
-    setTimeout(() => {
-      setHasEmailBeenSent(false)
-    }, 4000)
+      setTimeout(() => {
+        setHasEmailBeenSent({ ...hasEmailBeenSent, notification: false })
+      }, 4000)
+    }
 
-    if (response.status) {
+    return response;
+  }
+
+  const onSubmit = (data: FormDataProps) => {
+    if (emailHasBeenCompleted)
+      setValue("requesterEmail", "")
+
+    sendEmailAndWhatsApp(true, data)
+
+    if (hasEmailBeenSent.beenSent) {
       setValue("address", "")
       setValue("addressComplement", "")
       setValue("addressNumber", "")
@@ -151,13 +185,20 @@ export default function Inspections() {
       setValue("requesterEmail", "")
       setValue("requesterName", "")
       setValue("zipCode", "")
+      setValue("requesterEmail", "")
     }
+
+    setShowModal(false)
+    setEmailHasBeenCompleted(false)
   }
 
 
   const handleZipCodeFetch = async (code: string) => {
+    const inputCity = document.querySelector('input[name="city"]');
+
     if (String(code).length !== 8 || !validator.isNumeric(String(code))) return
 
+    setSearchingZipCode(true)
     setValue("city", "...")
     setValue("neighborhood", "...")
     setValue("address", "...")
@@ -169,20 +210,69 @@ export default function Inspections() {
       setValue("city", data.localidade)
       setValue("neighborhood", data.bairro)
       setValue("address", data.logradouro)
+      setSearchingZipCode(false)
+
+      if (data.erro) {
+        document.querySelector('input[name="city"]')?.focus()
+      } else {
+        document.querySelector('input[name="addressNumber"]')?.select()
+      }
 
     } catch (error: any) {
       console.error(error.message)
       setValue("city", "")
       setValue("neighborhood", "")
       setValue("address", "")
+      document.querySelector('input[name="city"]')?.focus()
+    } finally {
+      setSearchingZipCode(false)
     }
   }
 
   return (
     <>
       <Header />
+
+      <div onClick={() => setShowModal(false)} className={`${showModal ? 'opacity-60 z-20' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
+
+      <div className={`${showModal ? 'opacity-100 z-20' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
+        <AiOutlineCloseCircle
+          size={32}
+          className="absolute top-3 right-3 cursor-pointer text-slate-400"
+          onClick={() => setShowModal(false)}
+        />
+
+        <h1 className="text-xl font-bold text-primary mt-3 mb-2">Resultado da Simulação</h1>
+        <div className="w-full h-1 bg-secondary mb-5"></div>
+
+        <p className="text-lg text-primary font-semibold">
+          Valor da vistoria: <strong className="text-secondary font-semibold">{priceInspection}</strong>
+        </p>
+
+        {!emailHasBeenCompleted && (
+          <Input
+            type="email"
+            disabled={isSendingEmail}
+            label="E-mail do solicitante"
+            placeholder="ex: email@gmail.com"
+            classNameDiv="w-full max-w-[300px] mt-5"
+            helperText={errors?.requesterEmail?.message}
+            {...register("requesterEmail")}
+          />
+        )}
+
+        <p className="text-lg text-center text-primary font-semibold mt-5">Envie uma solicitação agora mesmo!</p>
+
+        <ButtonComponent
+          onClick={() => handleSubmit(onSubmit)()}
+          buttonSize="md"
+          className="flex justify-center items-center gap-2 mt-3"
+        >
+          Enviar WhatsApp <AiOutlineWhatsApp size={24} />
+        </ButtonComponent>
+      </div>
       <MainComponent className="items-center">
-        {hasEmailBeenSent && (
+        {hasEmailBeenSent.notification && (
           <NotificationsComponent size="md" position="bottom-right" className={`${emailResponse.includes("Falha") ? 'bg-red-500' : ''}`}>{emailResponse}</NotificationsComponent>
         )}
 
@@ -201,19 +291,23 @@ export default function Inspections() {
             {...register("requesterName")}
           />
 
-          <Input
-            disabled={isSendingEmail}
-            label="E-mail do solicitante"
-            placeholder="Digite seu melhor e-mail"
-            classNameDiv="xs:col-span-2"
-            helperText={errors?.requesterEmail?.message}
-            {...register("requesterEmail")}
-          />
+          {(!showModal && !emailHasBeenCompleted) && (
+            <Input
+              type="email"
+              disabled={isSendingEmail}
+              label="E-mail do solicitante"
+              placeholder="ex: email@gmail.com"
+              classNameDiv="xs:col-span-2"
+              helperText={errors?.requesterEmail?.message}
+              {...register("requesterEmail")}
+            />
+          )}
 
           <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Endereço do imóvel para vistoria</h2>
 
           <Input
             disabled={isSendingEmail}
+            type="number"
             label="Código do imóvel"
             placeholder="Código do imóvel"
             helperText={errors?.propertyCode?.message}
@@ -230,7 +324,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail}
+            disabled={isSendingEmail || searchingZipCode}
             label="Cidade"
             placeholder="Cidade"
             helperText={errors?.city?.message}
@@ -238,7 +332,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail}
+            disabled={isSendingEmail || searchingZipCode}
             label="Bairro"
             placeholder="Bairro"
             helperText={errors?.neighborhood?.message}
@@ -246,7 +340,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail}
+            disabled={isSendingEmail || searchingZipCode}
             label="Endereço"
             placeholder="Endereço"
             helperText={errors?.address?.message}
@@ -266,8 +360,8 @@ export default function Inspections() {
 
           <Input
             disabled={isSendingEmail}
-            label="Complemento"
-            placeholder="Complemento"
+            label="Complemento (opcional)"
+            placeholder="ex: Apto 101"
             {...register("addressComplement")}
           />
 
@@ -352,9 +446,11 @@ export default function Inspections() {
 
           {!isSendingEmail && (
             <ButtonComponent
-              onClick={() => handleSubmit(onSubmit)()}
+              onClick={() => handleSubmit(handleCalculateInspectionPrice)()}
               className="xs:col-span-2 m-auto mt-10"
-            />
+            >
+              Realizar Simulação
+            </ButtonComponent>
           )}
 
           {isSendingEmail && (
