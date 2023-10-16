@@ -5,7 +5,7 @@
         },
         {
             "src": "/calculateDistance",
-            "use": "@vercel/node"
+            "dest": "@vercel/node"
         }
     ]
 }
