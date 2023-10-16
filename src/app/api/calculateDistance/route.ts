@@ -1,5 +1,9 @@
 import puppeteer from "puppeteer-core"
-import chromium from "chrome-aws-lambda"
+import chromium from "@sparticuz/chromium"
+
+chromium.setHeadlessMode
+chromium.setGraphicsMode
+
 import { config } from "../../../../config.local"
 
 type dataType = {
@@ -15,11 +19,12 @@ export const POST = async (request: Request) => {
 
     try {
         const browser = await puppeteer.launch({
-            //headless: "new"
             args: chromium.args,
-            executablePath: await chromium.executablePath,
-            headless: true
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless
         })
+
         const page = await browser.newPage()
 
         const localAddress = config.ADDREES.replaceAll(" ", "+")

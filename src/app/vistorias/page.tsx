@@ -285,7 +285,13 @@ export default function Inspections() {
 
   return (
     <>
-      <div onClick={() => { if (!openNotifications.open) { setShowModal(false); setShowValueInfoModal(false) } }} className={`${showModal ? 'opacity-60 z-20' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
+      <div
+        onClick={() => {
+          if (!openNotifications.open) {
+            setShowModal(false); setShowValueInfoModal(false)
+          }
+        }}
+        className={`${showModal ? 'opacity-60 z-20' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
 
       <div className={`${showValueInfoModal ? 'opacity-100 z-20' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
         <AiOutlineCloseCircle
