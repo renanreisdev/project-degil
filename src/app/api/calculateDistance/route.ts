@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer-core"
+import puppeteer from "puppeteer"
 import chromium from "@sparticuz/chromium"
 
 chromium.setHeadlessMode
