@@ -1,5 +1,4 @@
-import puppeteer from "puppeteer-core"
-import chromium from "chrome-aws-lambda"
+import puppeteer from "puppeteer"
 import { config } from "../../../../config.local"
 
 type dataType = {
@@ -14,12 +13,7 @@ export const POST = async (request: Request) => {
     const isFromTo = data.isFromTo
 
     try {
-        const browser = await puppeteer.launch({
-            //headless: "new"
-            args: chromium.args,
-            executablePath: await chromium.executablePath,
-            headless: true
-        })
+        const browser = await puppeteer.launch({ headless: "new" })
         const page = await browser.newPage()
 
         const localAddress = config.ADDREES.replaceAll(" ", "+")

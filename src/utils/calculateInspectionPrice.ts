@@ -49,18 +49,23 @@ const calculateDistance = async (data: FormDataProps, isFromTo: boolean) => {
         return
     }
 
-    const require = await fetch("/api/calculateDistance", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            url,
-            isFromTo
+    let response = null
+    try {
+        const require = await fetch("/api/calculateDistance", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                url,
+                isFromTo
+            })
         })
-    })
 
-    const response = await require.json()
+        response = await require.json()
 
-    return { message: response.message, distance: response.distance, messageError: response.messageError }
+        return { message: response.message, distance: response.distance, messageError: response.messageError }
+    } catch (error: any) {
+
+    }
 }
