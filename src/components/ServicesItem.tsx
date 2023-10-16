@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { LinkComponent } from "./LinkComponent"
 
 type ServicesItemProps = {

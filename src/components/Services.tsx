@@ -2,7 +2,14 @@ import { config } from "../../config.local"
 import { ServicesItem } from "./ServicesItem"
 
 export const Services = () => {
+
     const data = [
+        {
+            title: 'Vistorias - Apresentação Comercial',
+            description: 'Olá, somos a Degil Engenharia e nessa apresentação oferecemos vistorias imobiliárias. Estamos aqui disponibilizando a você alguns serviços em vistorias para pequenas, médias e grandes imobiliárias, CORRETORES, ADVOGADOS, Profissionais autônomos e liberais. Atuamos na grande Porto Alegre, a uma chamada de WhatsApp. Clique em "Saiba Mais" e conheça um pouco mais sobre nossos serviços.',
+            link: '/regularizacao',
+            targetBlank: false
+        },
         {
             title: 'Regularização de residências e comércios',
             description: 'Valorize seu imóvel em até 30% e viabilize a venda por financiamento com mudanças simples. Analisamos a situação cadastral, indicamos o melhor processo e aprovamos as mudanças nos órgãos competentes. Obtenha o Laudos dos bombeiros e da vigilância sanitária, garantindo a segurançados seus clientes e do seu negócio.',

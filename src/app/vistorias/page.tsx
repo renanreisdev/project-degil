@@ -19,7 +19,6 @@ import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType, option
 import { PageTitle } from "@/components/PageTitle"
 import { MainComponent } from "@/components/MainComponent"
 import { Header } from "@/components/Header"
-import { FaRegWindowClose } from "react-icons/fa"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
@@ -58,6 +57,7 @@ const schema = z.object({
   inspectionType: z.string({ invalid_type_error: "Selecione uma opção" })
     .min(1, { message: "Selecione uma opção" })
     .refine((value) => optionsInspectionType.some((option) => option.value === value)),
+  stateCity: z.string(),
 })
 
 export type FormDataProps = z.infer<typeof schema>
@@ -68,19 +68,65 @@ export default function Inspections() {
     resolver: zodResolver(schema)
   })
 
-  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [openNotifications, setOpenNotifications] = useState({ open: false, title: '' })
   const [hasEmailBeenSent, setHasEmailBeenSent] = useState({ beenSent: false, notification: false })
   const [emailResponse, setEmailResponse] = useState('')
   const [emailHasBeenCompleted, setEmailHasBeenCompleted] = useState(false)
   const [searchingZipCode, setSearchingZipCode] = useState(false)
   const [showModal, setShowModal] = useState(false)
-  const [priceInspection, setPriceInspection] = useState('')
+  const [showValueInfoModal, setShowValueInfoModal] = useState(false)
 
-  const handleCalculateInspectionPrice = (data: FormDataProps) => {
+  const [priceInspection, setPriceInspection] = useState('')
+  const [inspectionCostPlusDistance, setInspectionCostPlusDistance] = useState('')
+  const [costDistance, setCostDistance] = useState('')
+  const [distance, setDistance] = useState(0)
+  const [calculateDistance] = useState(config.CALCULATE_DISTANCE)
+  const [showDistanceInfo] = useState(config.SHOW_DISTANCE_INFO)
+  const [distanceValueEmbedded] = useState(config.DISTANCE_VALUE_EMBEDDED)
+  const [freeMaximumKm] = useState(config.FREE_MAXIMUM_KM)
+  const [errorCalculatingDistance, setErrorCalculatingDistance] = useState(false)
+
+  const handleCalculateInspectionPrice = async (data: FormDataProps) => {
+    let costDistance = 0
+    let distance = 0
+
     setShowModal(true)
+    setOpenNotifications({ open: true, title: 'Calculando distância até o imóvel...' })
+
+    const response1 = await calculateInspectionPrice(data, true)
+
+    console.log("Multiplicador: ", config.DISTANCE_MULTIPLIER)
+
+    if (config.DISTANCE_MULTIPLIER === 0) {
+      setOpenNotifications({ open: true, title: 'Calculando distância até a Degil...' })
+      const response2 = await calculateInspectionPrice(data, false)
+      costDistance = response1.costDistance + response2.costDistance
+      distance = response1.distance + response2.distance
+    }
+
+
+    setOpenNotifications({ open: false, title: '' })
+    setShowValueInfoModal(true)
     sendEmailAndWhatsApp(false, data)
 
-    setPriceInspection(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(calculateInspectionPrice(data)))
+    if (response1.message === 'error') {
+      setErrorCalculatingDistance(true)
+    }
+    else {
+      setErrorCalculatingDistance(false)
+      if (config.DISTANCE_MULTIPLIER > 0) {
+        costDistance = response1.costDistance
+        distance = response1.distance
+      }
+
+      const inspectionPlusDistance = response1.inspectionPrice + costDistance
+      setInspectionCostPlusDistance(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspectionPlusDistance))
+      setCostDistance(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(costDistance))
+      setDistance(distance)
+    }
+    const inspection = response1.inspectionPrice
+
+    setPriceInspection(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspection))
   }
 
   const sendEmailAndWhatsApp = async (whatsapp: boolean, data: FormDataProps) => {
@@ -142,7 +188,7 @@ export default function Inspections() {
       window.open(whatsappSend, '_blank')
 
     if (getValues("requesterEmail").length > 0) {
-      setIsSendingEmail(true)
+      setOpenNotifications({ open: true, title: 'Enviando e-mail...' })
       setEmailHasBeenCompleted(true)
 
       response = await sendEmail(
@@ -153,7 +199,7 @@ export default function Inspections() {
       )
 
       setHasEmailBeenSent({ beenSent: true, notification: true })
-      setIsSendingEmail(false)
+      setOpenNotifications({ open: false, title: '' })
       setEmailResponse(response.message)
 
       setTimeout(() => {
@@ -164,13 +210,13 @@ export default function Inspections() {
     return response;
   }
 
-  const onSubmit = (data: FormDataProps) => {
+  const onSubmit = async (data: FormDataProps) => {
     if (emailHasBeenCompleted)
       setValue("requesterEmail", "")
 
-    sendEmailAndWhatsApp(true, data)
+    const response = await sendEmailAndWhatsApp(true, data)
 
-    if (hasEmailBeenSent.beenSent) {
+    if (response?.status || hasEmailBeenSent.beenSent) {
       setValue("address", "")
       setValue("addressComplement", "")
       setValue("addressNumber", "")
@@ -189,12 +235,12 @@ export default function Inspections() {
     }
 
     setShowModal(false)
+    setShowValueInfoModal(false)
     setEmailHasBeenCompleted(false)
   }
 
 
   const handleZipCodeFetch = async (code: string) => {
-    const inputCity = document.querySelector('input[name="city"]');
 
     if (String(code).length !== 8 || !validator.isNumeric(String(code))) return
 
@@ -204,7 +250,7 @@ export default function Inspections() {
     setValue("address", "...")
 
     const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement
-    const addressNumberInput = document.querySelector('input[name="city"]') as HTMLInputElement
+    const addressNumberInput = document.querySelector('input[name="addressNumber"]') as HTMLInputElement
 
     try {
       const response = await fetch(`https://viacep.com.br/ws/${code}/json/`)
@@ -213,6 +259,7 @@ export default function Inspections() {
       setValue("city", data.localidade)
       setValue("neighborhood", data.bairro)
       setValue("address", data.logradouro)
+      setValue("stateCity", data.uf)
       setSearchingZipCode(false)
 
       if (data.erro) {
@@ -226,6 +273,7 @@ export default function Inspections() {
       setValue("city", "")
       setValue("neighborhood", "")
       setValue("address", "")
+      setValue("stateCity", "")
       cityInput?.select()
     } finally {
       setSearchingZipCode(false)
@@ -234,28 +282,46 @@ export default function Inspections() {
 
   return (
     <>
-      <Header />
+      <div onClick={() => { if (!openNotifications.open) { setShowModal(false); setShowValueInfoModal(false) } }} className={`${showModal ? 'opacity-60 z-20' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
 
-      <div onClick={() => setShowModal(false)} className={`${showModal ? 'opacity-60 z-20' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
-
-      <div className={`${showModal ? 'opacity-100 z-20' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
+      <div className={`${showValueInfoModal ? 'opacity-100 z-20' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
         <AiOutlineCloseCircle
           size={32}
           className="absolute top-3 right-3 cursor-pointer text-slate-400"
-          onClick={() => setShowModal(false)}
+          onClick={() => { if (!openNotifications.open) { setShowModal(false); setShowValueInfoModal(false) } }}
         />
 
         <h1 className="text-xl font-bold text-primary mt-3 mb-2">Resultado da Simulação</h1>
         <div className="w-full h-1 bg-secondary mb-5"></div>
 
         <p className="text-lg text-primary font-semibold">
-          Valor da vistoria: <strong className="text-secondary font-semibold">{priceInspection}</strong>
+          Valor da vistoria: <strong className="text-secondary font-semibold">{distanceValueEmbedded ? inspectionCostPlusDistance : priceInspection}</strong>
         </p>
+
+        {calculateDistance && showDistanceInfo && (
+          <>
+            {!errorCalculatingDistance && (
+              <>
+                {!distanceValueEmbedded && (
+                  <>
+                    <p className="text-xl text-secondary font-semibold">+</p>
+                    <p className="text-sm text-primary font-semibold">Distância de deslocamento: <strong className="text-secondary font-semibold">{String(distance).replace(".", ",")}km</strong></p>
+                    <p className="text-sm text-primary font-semibold">Valor de deslocamento: <strong className="text-secondary font-semibold">{distance < freeMaximumKm ? '(grátis)' : costDistance}</strong></p>
+                  </>
+                )}
+
+                {distanceValueEmbedded && <p className="text-sm">* Distância de deslocamento calculado: {String(distance).replace(".", ",")}km {distance < freeMaximumKm ? '(grátis)' : ''}</p>}
+              </>
+            )}
+
+            {errorCalculatingDistance && <p className="text-red-500 text-sm">* Não foi possível calcular o valor do deslocamento</p>}
+          </>
+        )}
 
         {!emailHasBeenCompleted && (
           <Input
             type="email"
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             label="E-mail do solicitante"
             placeholder="ex: email@gmail.com"
             classNameDiv="w-full max-w-[300px] mt-5"
@@ -264,9 +330,10 @@ export default function Inspections() {
           />
         )}
 
-        <p className="text-lg text-center text-primary font-semibold mt-5">Envie uma solicitação agora mesmo!</p>
+        <p className="text-lg text-center text-primary font-semibold mt-5">Envie a solicitação agora mesmo!</p>
 
         <ButtonComponent
+          disabled={openNotifications.open}
           onClick={() => handleSubmit(onSubmit)()}
           buttonSize="md"
           className="flex justify-center items-center gap-2 mt-3"
@@ -274,19 +341,62 @@ export default function Inspections() {
           Enviar WhatsApp <AiOutlineWhatsApp size={24} />
         </ButtonComponent>
       </div>
+
+      <Header />
       <MainComponent className="items-center">
         {hasEmailBeenSent.notification && (
-          <NotificationsComponent size="md" position="bottom-right" className={`${emailResponse.includes("Falha") ? 'bg-red-500' : ''}`}>{emailResponse}</NotificationsComponent>
+          <NotificationsComponent size="md" position="bottom-right" className={`z-20 ${emailResponse.includes("Falha") ? 'bg-red-500' : ''}`}>{emailResponse}</NotificationsComponent>
         )}
 
-        <PageTitle title="Vistorias" />
-        <div className="w-full max-w-3xl grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
+        <PageTitle title="Vistorias - Apresentação Comercial" />
+
+        <div className="flex flex-col items-center">
+          <p className="text-primary indent-10">Olá, somos a <strong className="underline">Degil Engenharia</strong> e nessa apresentação oferecemos <strong className="underline">vistorias imobiliárias</strong>.
+            Estamos aqui disponibilizando a você alguns serviços em vistorias para pequenas, médias e grandes imobiliárias, CORRETORES, ADVOGADOS, Profissionais autônomos e liberais. Atuamos na grande Porto Alegre,
+            a uma chamada de WhatsApp. Nossas vistorias contam com anos de experiência para grandes imobiliárias e a um custo acessível, muito abaixo de ter um profissional CLT dentro de sua empresa específico para
+            a função. Oferecemos vistoria terceirizadas perfeitas, <strong className="underline">sem passivos trabalhistas e sem funcionários CLT</strong>, com facilidades, agilidade e custos que nenhuma empresa do mercado oferece.</p>
+
+          <h2 className="self-start mt-5 mb-2 text-xl text-secondary font-bold">Tipos de vistoria:</h2>
+
+          <ul className="list-decimal list-inside text-primary pl-10">
+            <li>Vistorias de locação: Entrada, Saída e constatação</li>
+            <li>Vistoria Condição vocacional do ponto, do prédio, do imóvel, para comércios possíveis no local.</li>
+            <li>Vistoria emergencial: Na assinatura/ou encerramento do contrato, seja necessário esclarecimento técnico no imóvel imediato. Vistoria de conferencia, transferência de contrato, acompanhamento, inventario, aditivos</li>
+            <li>Vistoria para avaliação legal, e estabelecimento de “preço legal” do imóvel com CREA (prerrogativa legal exclusiva de engenheiros e arquitetos)</li>
+          </ul>
+
+          <h2 className="self-start mt-5 mb-2 text-xl text-secondary font-bold">Modelo de vistoria:</h2>
+
+          <p className="text-primary indent-10"><strong>Entrada:</strong> Nossas vistorias são realizadas na forma de laudo fotográfico e descritivo de todos os itens do ambiente, assim como testes mecânicos de portas, armários e janelas e testes hidráulicos e elétricos dos
+            itens pertinentes. Analisamos também área externas, motores, portões, piscinas e banheiras. A seguir um exemplo de vistoria de entrada:</p>
+
+          <p className="text-primary indent-10"><strong>Saída:</strong> Na vistoria de saída realizamos todos os testes e análises da vistoria de entrada e ainda comparamos de forma minuciosa o estado presente do imóvel à entrada, para evidenciar e solicitar os devidos reparos
+            e restauração das condições de entrada dos itens do imóvel. A se guir um exemplo de vistoria de saída:</p>
+
+          <h2 className="self-start mt-5 mb-2 text-xl text-secondary font-bold">Tabela de Comercialização para vistorias residenciais e comerciais:</h2>
+
+          <ul className="list-disc list-inside text-primary pl-10">
+            <li><strong>Vistoria avulsa:</strong> Imóveis sem mobília até 60 m² valor R$ 100,00, acima de 60m², adicione R$1,00 por m².</li>
+
+            <ul className="list-disc list-inside text-primary pl-10"><strong>Adicionais:</strong>
+              <li><strong>Semimobiliado:</strong> 20%</li>
+              <li><strong>Mobiliado:</strong> 50%</li>
+              <li><strong>Com área externa (pátios):</strong> 20%</li>
+              <li><strong>Deslocamento:</strong> Em Porto alegre não será cobrado adicional se o trajeto imobiliária-imóvel-imobiliária for menor ou igual a 10km. Se exceder, será cobrado R$1,00 por km e se não for possível realizar a vistoria devido falta de chaves na agência
+                ou chaves não abrirem o imóvel será cobrado R$15,00 devido tempo e gasolina gastos.</li>
+            </ul>
+          </ul>
+
+        </div>
+
+        <div className="w-full max-w-3xl mt-5 grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
+
           <h2 className="text-xl text-center text-secondary font-bold xs:col-span-2">Faça uma simulação</h2>
 
           <h2 className="text-lg mb-1 xs:col-span-2">Dados pessoais</h2>
 
           <Input
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             label="Nome do solicitante"
             placeholder="Digite o nome do solicitante"
             classNameDiv="xs:col-span-2"
@@ -297,7 +407,7 @@ export default function Inspections() {
           {(!showModal && !emailHasBeenCompleted) && (
             <Input
               type="email"
-              disabled={isSendingEmail}
+              disabled={openNotifications.open}
               label="E-mail do solicitante"
               placeholder="ex: email@gmail.com"
               classNameDiv="xs:col-span-2"
@@ -309,7 +419,7 @@ export default function Inspections() {
           <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Endereço do imóvel para vistoria</h2>
 
           <Input
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             type="number"
             label="Código do imóvel"
             placeholder="Código do imóvel"
@@ -318,7 +428,7 @@ export default function Inspections() {
           />
 
           <MaskedInput
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             mask="99999-999"
             label="CEP do imóvel"
             placeholder="Digite o CEP do imóvel"
@@ -327,7 +437,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail || searchingZipCode}
+            disabled={openNotifications.open || searchingZipCode}
             label="Cidade"
             placeholder="Cidade"
             helperText={errors?.city?.message}
@@ -335,7 +445,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail || searchingZipCode}
+            disabled={openNotifications.open || searchingZipCode}
             label="Bairro"
             placeholder="Bairro"
             helperText={errors?.neighborhood?.message}
@@ -343,7 +453,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail || searchingZipCode}
+            disabled={openNotifications.open || searchingZipCode}
             label="Endereço"
             placeholder="Endereço"
             helperText={errors?.address?.message}
@@ -352,7 +462,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             type="number"
             maxLength={6}
             label="Número"
@@ -362,7 +472,7 @@ export default function Inspections() {
           />
 
           <Input
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             label="Complemento (opcional)"
             placeholder="ex: Apto 101"
             {...register("addressComplement")}
@@ -371,7 +481,7 @@ export default function Inspections() {
           <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Dados do imóvel para vistoria</h2>
 
           <Input
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             type="number"
             min={1}
             max={99999}
@@ -389,7 +499,7 @@ export default function Inspections() {
             {optionsHasFurniture.map((option) => (
               <Input
                 key={option.value}
-                disabled={isSendingEmail}
+                disabled={openNotifications.open}
                 type="radio"
                 isRadioInput={true}
                 label={option.label}
@@ -407,7 +517,7 @@ export default function Inspections() {
             {optionsHasCourtyard.map((option) => (
               <Input
                 key={option.value}
-                disabled={isSendingEmail}
+                disabled={openNotifications.open}
                 type="radio"
                 isRadioInput={true}
                 label={option.label}
@@ -425,7 +535,7 @@ export default function Inspections() {
             {optionsInspectionType.map((option) => (
               <Input
                 key={option.value}
-                disabled={isSendingEmail}
+                disabled={openNotifications.open}
                 type="radio"
                 isRadioInput={true}
                 label={option.label}
@@ -437,7 +547,7 @@ export default function Inspections() {
           </InputRadioContainer>
 
           <Input
-            disabled={isSendingEmail}
+            disabled={openNotifications.open}
             type="date"
             label="Data de vigência"
             classNameDiv="xs:col-span-2"
@@ -447,7 +557,7 @@ export default function Inspections() {
             {...register("effectivenessDate")}
           />
 
-          {!isSendingEmail && (
+          {!openNotifications.open && (
             <ButtonComponent
               onClick={() => handleSubmit(handleCalculateInspectionPrice)()}
               className="xs:col-span-2 m-auto mt-10"
@@ -456,9 +566,9 @@ export default function Inspections() {
             </ButtonComponent>
           )}
 
-          {isSendingEmail && (
-            <NotificationsComponent className="xs:col-span-2 m-auto mt-10">
-              <AiOutlineLoading size={24} className="animate-spin" /> Enviando e-mail...
+          {openNotifications.open && (
+            <NotificationsComponent className="z-20 xs:col-span-2 m-auto mt-10">
+              <AiOutlineLoading size={24} className="animate-spin" /> {openNotifications.title}
             </NotificationsComponent>
           )}
         </div>
