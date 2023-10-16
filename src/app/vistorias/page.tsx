@@ -93,13 +93,16 @@ export default function Inspections() {
     setShowModal(true)
     setOpenNotifications({ open: true, title: 'Calculando distância até o imóvel...' })
 
+    console.log("Chamado do método")
+
     const response1 = await calculateInspectionPrice(data, true)
 
-    console.log("Multiplicador: ", config.DISTANCE_MULTIPLIER)
+    console.log("Resposta1 => ", response1)
 
     if (config.DISTANCE_MULTIPLIER === 0) {
       setOpenNotifications({ open: true, title: 'Calculando distância até a Degil...' })
       const response2 = await calculateInspectionPrice(data, false)
+      console.log("Resposta2 => ", response1)
       costDistance = response1.costDistance + response2.costDistance
       distance = response1.distance + response2.distance
     }

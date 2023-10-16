@@ -80,6 +80,6 @@ export const POST = async (request: Request) => {
         return new Response(JSON.stringify({ message: "success", distance }))
     } catch (error) {
         console.error("Error calculating distance: ", error)
-        return new Response(JSON.stringify({ message: "error", distance: 0 }))
+        return new Response(JSON.stringify({ message: "error", distance: 0, messageError: error }))
     }
 }

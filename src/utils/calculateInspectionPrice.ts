@@ -22,7 +22,9 @@ export const calculateInspectionPrice = async (data: FormDataProps, isFromTo: bo
     let costDistance = 0
 
     if (calculateTheDistance) {
+        console.log("Entrou para calcular a distancia...")
         response = await calculateDistance(data, isFromTo)
+        console.log("Resposta após o calculo => ", response)
         let distance = response?.distance * (config.DISTANCE_MULTIPLIER > 0 ? config.DISTANCE_MULTIPLIER : 1)
 
         if (distance >= config.FREE_MAXIMUM_KM) {
@@ -60,5 +62,5 @@ const calculateDistance = async (data: FormDataProps, isFromTo: boolean) => {
 
     const response = await require.json()
 
-    return { message: response.message, distance: response.distance }
+    return { message: response.message, distance: response.distance, messageError: response.messageError }
 }
