@@ -1,8 +1,5 @@
 import puppeteer from "puppeteer"
-import chromium from "@sparticuz/chromium"
-
-chromium.setHeadlessMode
-chromium.setGraphicsMode
+import chromium from "@sparticuz/chromium-min"
 
 import { config } from "../../../../config.local"
 
@@ -19,10 +16,13 @@ export const POST = async (request: Request) => {
 
     try {
         const browser = await puppeteer.launch({
-            args: chromium.args,
+            args: [...chromium.args, '--hide-scrollbar', '--disable-web-security'],
             defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath(),
-            headless: chromium.headless
+            executablePath: await chromium.executablePath(
+                `https://github.com/Sparticuz/chromium/releases/download/v117.0.0/chromium-v117.0.0-pack.tar`
+            ),
+            headless: chromium.headless,
+            ignoreHTTPSErrors: true
         })
 
         const page = await browser.newPage()

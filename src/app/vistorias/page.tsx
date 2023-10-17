@@ -442,7 +442,7 @@ export default function Inspections() {
             label="CEP do imóvel"
             placeholder="Digite o CEP do imóvel"
             helperText={errors?.zipCode?.message}
-            {...register("zipCode", { onBlur: (e) => { handleZipCodeFetch(e.target.value.replace('-', '')) } })}
+            {...register("zipCode", { onBlur: (e: any) => { handleZipCodeFetch(e.target.value.replace('-', '')) } })}
           />
 
           <Input
