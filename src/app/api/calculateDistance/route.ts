@@ -39,20 +39,22 @@ export const POST = async (request: Request) => {
         console.log("ENDEREÇO: ", localURL)
         console.log("ENDEREÇO DESTINO: ", url)
 
+        let distance = 0;
+
         if (isFromTo)
             await page.goto(`https://www.google.com.br/maps/dir/${localURL}/${url}/`)
         else
             await page.goto(`https://www.google.com.br/maps/dir/${url}/${localURL}/`)
 
 
-        const button = 'div[data-travel_mode="0"] button'
+        //const button = 'div[data-travel_mode="0"] button'
 
-        await page.click(button)
+        //await page.click(button)
 
-        await page.waitForSelector('.XdKEzd') // Classe das DIV que contém as distâncias
+        //await page.waitForSelector('.XdKEzd') // Classe das DIV que contém as distâncias
 
         const result = await page.evaluate(() => {
-            const divElements = Array.from(document.querySelectorAll('.ivN21e')) // Classe da DIV que contém o BOTÃO no modo CARRO
+            const divElements = Array.from(document.querySelectorAll('.ivN21e')) // Classe da DIV que contém as distâncias no modo CARRO
             return divElements.map(div => div.textContent)
         })
 
@@ -69,8 +71,6 @@ export const POST = async (request: Request) => {
                 return Number(distance.replace(" km", "").replace(",", "."))
             }
         })
-
-        let distance = 0;
 
         console.log("Distancia padrão: ", distances)
 
