@@ -33,7 +33,7 @@ const schema = z.object({
   propertyCode: z.string()
     .min(3, { message: "O código deve ter pelo menos 3 números" }),
   zipCode: z.string()
-    .min(1, { message: "O CEP é obrigatório" }).refine((value) => validator.isPostalCode(value, "BR"), { message: "O CEP deve ser válido" }),
+    .min(1, { message: "O CEP é obrigatório" }).refine((value) => validator.isPostalCode(value, "BR"), { message: "Digite um CEP válido" }),
   city: z.string()
     .min(3, { message: "A cidade deve ter pelo menos 3 caracteres" }),
   neighborhood: z.string()
@@ -79,55 +79,39 @@ export default function Inspections() {
   const [priceInspection, setPriceInspection] = useState('')
   const [inspectionCostPlusDistance, setInspectionCostPlusDistance] = useState('')
   const [costDistance, setCostDistance] = useState('')
-  const [distance, setDistance] = useState(0)
+  const [distance, setDistance] = useState('')
   const [calculateDistance] = useState(config.CALCULATE_DISTANCE)
   const [showDistanceInfo] = useState(config.SHOW_DISTANCE_INFO)
   const [distanceValueEmbedded] = useState(config.DISTANCE_VALUE_EMBEDDED)
-  const [freeMaximumKm] = useState(config.FREE_MAXIMUM_KM)
   const [errorCalculatingDistance, setErrorCalculatingDistance] = useState(false)
 
   const handleCalculateInspectionPrice = async (data: FormDataProps) => {
-    let costDistance = 0
-    let distance = 0
 
     setShowModal(true)
-    setOpenNotifications({ open: true, title: 'Calculando distância até o imóvel...' })
+    setOpenNotifications({ open: true, title: 'Calculando o total de distância...' })
 
-    console.log("Chamado do método")
-
-    const response1 = await calculateInspectionPrice(data, true)
-
-    console.log("Resposta1 => ", response1)
-
-    if (config.DISTANCE_MULTIPLIER === 0) {
-      setOpenNotifications({ open: true, title: 'Calculando distância até a Degil...' })
-      const response2 = await calculateInspectionPrice(data, false)
-      console.log("Resposta2 => ", response1)
-      costDistance = response1.costDistance + response2.costDistance
-      distance = response1.distance + response2.distance
-    }
-
+    const response = await calculateInspectionPrice(data)
 
     setOpenNotifications({ open: false, title: '' })
     setShowValueInfoModal(true)
     sendEmailAndWhatsApp(false, data)
 
-    if (response1.message === 'error') {
+    if (response.response.message === 'error') {
       setErrorCalculatingDistance(true)
     }
     else {
       setErrorCalculatingDistance(false)
-      if (config.DISTANCE_MULTIPLIER > 0) {
-        costDistance = response1.costDistance
-        distance = response1.distance
-      }
 
-      const inspectionPlusDistance = response1.inspectionPrice + costDistance
+      const inspectionPlusDistance = response.inspectionPrice + response.costDistance
       setInspectionCostPlusDistance(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspectionPlusDistance))
-      setCostDistance(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(costDistance))
-      setDistance(distance)
+      setCostDistance(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(response.costDistance))
+      if (response.distance > 1)
+        setDistance(response.distance.toLocaleString('pt-BR', { style: "decimal", minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "km")
+      else {
+        setDistance(response.distance * 1000 + "m")
+      }
     }
-    const inspection = response1.inspectionPrice
+    const inspection = response.inspectionPrice
 
     setPriceInspection(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspection))
   }
@@ -235,6 +219,7 @@ export default function Inspections() {
       setValue("requesterName", "")
       setValue("zipCode", "")
       setValue("requesterEmail", "")
+      setValue("stateCity", "")
     }
 
     setShowModal(false)
@@ -259,27 +244,30 @@ export default function Inspections() {
       const response = await fetch(`https://viacep.com.br/ws/${code}/json/`)
       const data = await response.json()
 
-      setValue("city", data.localidade)
-      setValue("neighborhood", data.bairro)
-      setValue("address", data.logradouro)
-      setValue("stateCity", data.uf)
       setSearchingZipCode(false)
 
       if (data.erro) {
+        setValue("city", "")
+        setValue("neighborhood", "")
+        setValue("address", "")
+        setValue("stateCity", "")
         cityInput?.select()
       } else {
+        setValue("city", data.localidade)
+        setValue("neighborhood", data.bairro)
+        setValue("address", data.logradouro)
+        setValue("stateCity", data.uf)
         addressNumberInput?.select()
       }
 
     } catch (error: any) {
       console.error(error.message)
+      setSearchingZipCode(false)
       setValue("city", "")
       setValue("neighborhood", "")
       setValue("address", "")
       setValue("stateCity", "")
       cityInput?.select()
-    } finally {
-      setSearchingZipCode(false)
     }
   }
 
@@ -314,12 +302,12 @@ export default function Inspections() {
                 {!distanceValueEmbedded && (
                   <>
                     <p className="text-xl text-secondary font-semibold">+</p>
-                    <p className="text-sm text-primary font-semibold">Distância de deslocamento: <strong className="text-secondary font-semibold">{String(distance).replace(".", ",")}km</strong></p>
-                    <p className="text-sm text-primary font-semibold">Valor de deslocamento: <strong className="text-secondary font-semibold">{distance < freeMaximumKm ? '(grátis)' : costDistance}</strong></p>
+                    <p className="text-sm text-primary font-semibold">Distância de deslocamento: <strong className="text-secondary font-semibold">{distance}</strong></p>
+                    <p className="text-sm text-primary font-semibold">Valor de deslocamento: <strong className="text-secondary font-semibold">{costDistance.includes("R$ 0,00") ? '(grátis)' : costDistance}</strong></p>
                   </>
                 )}
 
-                {distanceValueEmbedded && <p className="text-sm">* Distância de deslocamento calculado: {String(distance).replace(".", ",")}km {distance < freeMaximumKm ? '(grátis)' : ''}</p>}
+                {distanceValueEmbedded && <p className="text-sm">* Distância de deslocamento calculado: {distance} {costDistance.includes("R$ 0,00") ? '(grátis)' : ''}</p>}
               </>
             )}
 

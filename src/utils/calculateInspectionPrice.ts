@@ -10,7 +10,7 @@ const courtyard = config.COURTYARD
 const calculateTheDistance = config.CALCULATE_DISTANCE
 const valuePerKM = config.VALUE_PER_KM
 
-export const calculateInspectionPrice = async (data: FormDataProps, isFromTo: boolean) => {
+export const calculateInspectionPrice = async (data: FormDataProps) => {
     const { propertyArea, hasFurniture, hasCourtyard } = data
 
     const furniture = hasFurniture === 'semiFurnished' ? semiFurnished : hasFurniture === 'furnished' ? furnished : 0
@@ -20,52 +20,68 @@ export const calculateInspectionPrice = async (data: FormDataProps, isFromTo: bo
     let inspectionPrice = (initialPrice + ((totalArea - initialM2) * surplusM2)) * (1 + furniture + valueCourtyard)
     let response = null;
     let costDistance = 0
+    let distance = 0;
 
     if (calculateTheDistance) {
-        console.log("Entrou para calcular a distancia...")
-        response = await calculateDistance(data, isFromTo)
-        console.log("Resposta após o calculo => ", response)
-        let distance = response?.distance * (config.DISTANCE_MULTIPLIER > 0 ? config.DISTANCE_MULTIPLIER : 1)
+        response = await calculateDistance(data)
+        if (config.DISTANCE_MULTIPLIER > 0)
+            distance = response?.distanceA * config.DISTANCE_MULTIPLIER
+        else
+            distance = response?.totalDistance
 
-        if (distance >= config.FREE_MAXIMUM_KM) {
+        if (distance >= config.FREE_MAXIMUM_KM)
             costDistance = distance * valuePerKM
-        }
+
     }
 
-    return { inspectionPrice, costDistance, distance: response?.distance, message: response?.message }
+    return { inspectionPrice, costDistance, distance, response }
 }
 
-const calculateDistance = async (data: FormDataProps, isFromTo: boolean) => {
-    const address = data.address.replaceAll(" ", "+")
-    const number = data.addressNumber
-    const neighborhood = data.neighborhood.replaceAll(" ", "+")
-    const city = data.city.replaceAll(" ", "+")
-    const state = data.stateCity
-    const zipCode = data.zipCode
+const calculateDistance = async (data: FormDataProps) => {
+    const originAddress = config.ADDRESS.replaceAll(" ", "+")
+    const originNumber = config.ADDRESS_NUMBER
+    const originNeighborhood = config.ADDRESS_NEIGHBORHOOD.replaceAll(" ", "+")
+    const originCity = config.ADDRESS_CITY.replaceAll(" ", "+")
+    const originState = config.ADDRESS_STATE
+    const originZipCode = config.ADDRESS_ZIP_CODE
 
-    const url = `${address},+${number}+-+${neighborhood},+${city}+-+${state}${zipCode ? ',+' + zipCode : ''}`;
+    const destinationAddress = data.address
+    const destinationNumber = data.addressNumber
+    const destinationNeighborhood = data.neighborhood
+    const destinationCity = data.city
+    const destinationState = data.stateCity
+    const destinationZipCode = data.zipCode
 
-    if (address.length === 0) {
+    const origins = [
+        `${originAddress}, ${originNumber} - ${originNeighborhood}, ${originCity} - ${originState}, ${originZipCode}`,
+        `${destinationAddress}, ${destinationNumber} - ${destinationNeighborhood}, ${destinationCity} - ${destinationState}, ${destinationZipCode}`,
+    ]
+
+    const destinations = [
+        `${destinationAddress}, ${destinationNumber} - ${destinationNeighborhood}, ${destinationCity} - ${destinationState}, ${destinationZipCode}`,
+        `${originAddress}, ${originNumber} - ${originNeighborhood}, ${originCity} - ${originState}, ${originZipCode}`,
+    ]
+
+    if (destinationAddress.length === 0) {
         return
     }
 
-    let response = null
     try {
-        const require = await fetch("/api/calculateDistance", {
+        const require = await fetch("/api/google-maps-api", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                url,
-                isFromTo
+                origins,
+                destinations,
             })
         })
 
-        response = await require.json()
+        const response = await require.json()
 
-        return { message: response.message, distance: response.distance, messageError: response.messageError }
+        return response
     } catch (error: any) {
-
+        return { message: "Error", messageError: error }
     }
 }
