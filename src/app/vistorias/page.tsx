@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form"
 import { useState } from "react"
-import validator from "validator"
 import { config } from "../../../config.local"
 import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
 import { AiOutlineCloseCircle, AiOutlineLoading, AiOutlineWhatsApp } from "react-icons/ai"
@@ -19,6 +18,10 @@ import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType, option
 import { PageTitle } from "@/components/PageTitle"
 import { MainComponent } from "@/components/MainComponent"
 import { Header } from "@/components/Header"
+import { storage } from "@/utils/firebase"
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"
+import validator from "validator"
+import { LinkComponent } from "@/components/LinkComponent"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
@@ -28,7 +31,7 @@ const schema = z.object({
   requesterEmail: z.string().
     refine((value) => {
       if (value.length > 0) return validator.isEmail(value);
-      else return true;
+      return true;
     }, { message: "Digite um e-mail válido" }),
   propertyCode: z.string()
     .min(3, { message: "O código deve ter pelo menos 3 números" }),
@@ -57,6 +60,18 @@ const schema = z.object({
   inspectionType: z.string({ invalid_type_error: "Selecione uma opção" })
     .min(1, { message: "Selecione uma opção" })
     .refine((value) => optionsInspectionType.some((option) => option.value === value)),
+  attachments: z.instanceof(FileList)
+    .transform(list => list[0])
+    .refine((value) => {
+      const allowedExtensions = [".doc", ".docx", ".pdf"];
+      const fileExtension = value?.name.split('.').pop();
+      if (allowedExtensions.includes(`.${fileExtension}`) || fileExtension === undefined) return true
+      return false;
+    }, { message: "Escolha um arquivo do tipo .pdf, .doc ou .docx" })
+    .refine((value) => {
+      if (value?.size <= 24 * 1024 * 1024 || value?.size === undefined) return true
+      return false
+    }, { message: "O arquivo deve ter no máximo 24MB" }),
   stateCity: z.string(),
 })
 
@@ -84,6 +99,9 @@ export default function Inspections() {
   const [showDistanceInfo] = useState(config.SHOW_DISTANCE_INFO)
   const [distanceValueEmbedded] = useState(config.DISTANCE_VALUE_EMBEDDED)
   const [errorCalculatingDistance, setErrorCalculatingDistance] = useState(false)
+  const [hasAttachments, setHasAttachments] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [fileURL, setFileURL] = useState('')
 
   const handleCalculateInspectionPrice = async (data: FormDataProps) => {
 
@@ -96,7 +114,7 @@ export default function Inspections() {
     setShowValueInfoModal(true)
     sendEmailAndWhatsApp(false, data)
 
-    if (response.response.message === 'error') {
+    if (response.response === null) {
       setErrorCalculatingDistance(true)
     }
     else {
@@ -117,10 +135,11 @@ export default function Inspections() {
   }
 
   const sendEmailAndWhatsApp = async (whatsapp: boolean, data: FormDataProps) => {
+
     let response = null;
     const price = priceInspection
 
-    const { requesterName, requesterEmail, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType } = data
+    const { requesterName, requesterEmail, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType, attachments } = data
 
     const furniture = hasFurniture === 'semiFurnished' ? "Semimobiliado" : hasFurniture === 'furnished' ? "Mobiliado" : "Sem mobília"
     const courtyard = hasCourtyard === 'yes' ? "Sim" : "Não"
@@ -182,7 +201,9 @@ export default function Inspections() {
         requesterEmail,
         subject,
         emailMessage,
-        requesterName
+        requesterName,
+        attachments?.name,
+        fileURL
       )
 
       setHasEmailBeenSent({ beenSent: true, notification: true })
@@ -219,6 +240,7 @@ export default function Inspections() {
       setValue("requesterName", "")
       setValue("zipCode", "")
       setValue("requesterEmail", "")
+      //setValue("attachments", null!)
       setValue("stateCity", "")
     }
 
@@ -271,6 +293,31 @@ export default function Inspections() {
     }
   }
 
+  const fileUploader = (attachments: File) => {
+    if (attachments.name.length > 0) {
+      const storageRef = ref(storage, `temporary/${attachments.name}`);
+      const upload = uploadBytesResumable(storageRef, attachments);
+
+      upload.on(
+        "state_changed",
+        snapshot => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        },
+        error => {
+          alert(error)
+        },
+        () => {
+          getDownloadURL(upload.snapshot.ref).then(downloadURL => {
+            setFileURL(downloadURL)
+          })
+        }
+      )
+    } else {
+      console.log('Arquivo não encontrado!');
+    }
+  }
+
   return (
     <>
       <div
@@ -281,7 +328,7 @@ export default function Inspections() {
         }}
         className={`${showModal ? 'opacity-60 z-20' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
 
-      <div className={`${showValueInfoModal ? 'opacity-100 z-20' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
+      <div className={`${showValueInfoModal ? 'opacity-100 z-20' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[430px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
         <AiOutlineCloseCircle
           size={32}
           className="absolute top-3 right-3 cursor-pointer text-slate-400"
@@ -316,15 +363,21 @@ export default function Inspections() {
         )}
 
         {!emailHasBeenCompleted && (
-          <Input
-            type="email"
-            disabled={openNotifications.open}
-            label="E-mail do solicitante"
-            placeholder="ex: email@gmail.com"
-            classNameDiv="w-full max-w-[300px] mt-5"
-            helperText={errors?.requesterEmail?.message}
-            {...register("requesterEmail")}
-          />
+          <div className="flex flex-col items-center">
+            <Input
+              type="email"
+              disabled={openNotifications.open}
+              label="E-mail do solicitante"
+              placeholder="ex: email@gmail.com"
+              classNameDiv="w-full max-w-[300px] mt-5"
+              helperText={errors?.requesterEmail?.message}
+              {...register("requesterEmail")}
+            />
+
+            {hasAttachments && (
+              <p className="text-red-500 text-sm">* Você selecionou um anexo mas não inseriu um email...</p>
+            )}
+          </div>
         )}
 
         <p className="text-lg text-center text-primary font-semibold mt-5">Envie a solicitação agora mesmo!</p>
@@ -364,13 +417,27 @@ export default function Inspections() {
 
           <h2 className="self-start mt-5 mb-2 text-xl text-secondary font-bold">Modelo de vistoria:</h2>
 
-          <p className="text-primary indent-10"><strong>Entrada:</strong> Nossas vistorias são realizadas na forma de laudo fotográfico e descritivo de todos os itens do ambiente, assim como testes mecânicos de portas, armários e janelas e testes hidráulicos e elétricos dos
+          <p className="text-primary indent-10 mb-5"><strong>Entrada:</strong> Nossas vistorias são realizadas na forma de laudo fotográfico e descritivo de todos os itens do ambiente, assim como testes mecânicos de portas, armários e janelas e testes hidráulicos e elétricos dos
             itens pertinentes. Analisamos também área externas, motores, portões, piscinas e banheiras. A seguir um exemplo de vistoria de entrada:</p>
 
-          <p className="text-primary indent-10"><strong>Saída:</strong> Na vistoria de saída realizamos todos os testes e análises da vistoria de entrada e ainda comparamos de forma minuciosa o estado presente do imóvel à entrada, para evidenciar e solicitar os devidos reparos
+          <LinkComponent
+            href="https://drive.google.com/file/d/1Mot-8HNgHcu4cLnFE3DaWm6tKzpAAj51/view?usp=sharing"
+            model="outline"
+          >
+            Ver modelo de entrada
+          </LinkComponent>
+
+          <p className="text-primary indent-10 my-5"><strong>Saída:</strong> Na vistoria de saída realizamos todos os testes e análises da vistoria de entrada e ainda comparamos de forma minuciosa o estado presente do imóvel à entrada, para evidenciar e solicitar os devidos reparos
             e restauração das condições de entrada dos itens do imóvel. A se guir um exemplo de vistoria de saída:</p>
 
-          <h2 className="self-start mt-5 mb-2 text-xl text-secondary font-bold">Tabela de Comercialização para vistorias residenciais e comerciais:</h2>
+          <LinkComponent
+            href="https://drive.google.com/file/d/1wPil3eQrlGrBb3PFo2oGJ91qzlyfguDn/view?usp=sharing"
+            model="outline"
+          >
+            Ver modelo de Saída
+          </LinkComponent>
+
+          <h2 className="self-start mt-10 mb-2 text-xl text-secondary font-bold">Tabela de Comercialização para vistorias residenciais e comerciais:</h2>
 
           <ul className="list-disc list-inside text-primary pl-10">
             <li><strong>Vistoria avulsa:</strong> Imóveis sem mobília até 60 m² valor R$ 100,00, acima de 60m², adicione R$1,00 por m².</li>
@@ -386,40 +453,64 @@ export default function Inspections() {
 
         </div>
 
-        <div className="w-full max-w-3xl mt-5 grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-2">
+        <div className="w-full max-w-3xl mt-10 grid gap-x-10 p-5 bg-slate-50 rounded-sm shadow-md xs:grid-cols-8">
 
-          <h2 className="text-xl text-center text-secondary font-bold xs:col-span-2">Faça uma simulação</h2>
+          <h2 className="text-xl text-center text-secondary font-bold xs:col-span-8">Faça uma simulação</h2>
 
-          <h2 className="text-lg mb-1 xs:col-span-2">Dados pessoais</h2>
+          <h2 className="text-lg mb-1 xs:col-span-8">Dados pessoais</h2>
 
           <Input
             disabled={openNotifications.open}
             label="Nome do solicitante"
             placeholder="Digite o nome do solicitante"
-            classNameDiv="xs:col-span-2"
+            classNameDiv="xs:col-span-8"
             helperText={errors?.requesterName?.message}
             {...register("requesterName")}
           />
 
           {(!showModal && !emailHasBeenCompleted) && (
-            <Input
-              type="email"
-              disabled={openNotifications.open}
-              label="E-mail do solicitante"
-              placeholder="ex: email@gmail.com"
-              classNameDiv="xs:col-span-2"
-              helperText={errors?.requesterEmail?.message}
-              {...register("requesterEmail")}
-            />
-          )}
+            <>
+              <Input
+                type="email"
+                disabled={openNotifications.open}
+                label="E-mail do solicitante"
+                placeholder="ex: email@gmail.com"
+                classNameDiv="xs:col-span-5"
+                helperText={errors?.requesterEmail?.message}
+                {...register("requesterEmail")}
+              />
 
-          <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Endereço do imóvel para vistoria</h2>
+              <div className="xs:col-span-3 relative mt-5 w-full flex flex-start items-center">
+                <Input
+                  type="file"
+                  accept=".pdf, .doc, .docx"
+                  disabled={openNotifications.open}
+                  label={uploadProgress > 0 && uploadProgress < 100 ? "Carregando..." : hasAttachments ? "Documento anexado" : "Anexar documento"}
+                  classNameDiv="flex-1"
+                  classNameLabel={`m-0 border border-slate-400 rounded text-center text-neutral-500 flex-1 px-3 py-[0.4rem] cursor-pointer ${uploadProgress === 100 ? 'text-white bg-secondary border-none' : ''}`}
+                  classNameInput="hidden"
+                  helperText={errors?.attachments?.message}
+                  {...register("attachments", {
+                    onChange: (e) => {
+                      if (e.target.files.length > 0)
+                        fileUploader(e.target.files[0]);
+
+                      setHasAttachments(e.target.files.length > 0)
+                    }
+                  })}
+                />
+              </div>
+            </>
+
+          )}
+          <h2 className="text-lg mt-3 mb-1 xs:col-span-8">Endereço do imóvel para vistoria</h2>
 
           <Input
             disabled={openNotifications.open}
             type="number"
             label="Código do imóvel"
             placeholder="Código do imóvel"
+            classNameDiv="xs:col-span-4"
             helperText={errors?.propertyCode?.message}
             {...register("propertyCode")}
           />
@@ -429,6 +520,7 @@ export default function Inspections() {
             mask="99999-999"
             label="CEP do imóvel"
             placeholder="Digite o CEP do imóvel"
+            classNameDiv="xs:col-span-4"
             helperText={errors?.zipCode?.message}
             {...register("zipCode", { onBlur: (e: any) => { handleZipCodeFetch(e.target.value.replace('-', '')) } })}
           />
@@ -437,6 +529,7 @@ export default function Inspections() {
             disabled={openNotifications.open || searchingZipCode}
             label="Cidade"
             placeholder="Cidade"
+            classNameDiv="xs:col-span-4"
             helperText={errors?.city?.message}
             {...register("city")}
           />
@@ -445,6 +538,7 @@ export default function Inspections() {
             disabled={openNotifications.open || searchingZipCode}
             label="Bairro"
             placeholder="Bairro"
+            classNameDiv="xs:col-span-4"
             helperText={errors?.neighborhood?.message}
             {...register("neighborhood")}
           />
@@ -455,7 +549,7 @@ export default function Inspections() {
             placeholder="Endereço"
             helperText={errors?.address?.message}
             {...register("address")}
-            classNameDiv="xs:col-span-2"
+            classNameDiv="xs:col-span-8"
           />
 
           <Input
@@ -464,6 +558,7 @@ export default function Inspections() {
             maxLength={6}
             label="Número"
             placeholder="Número"
+            classNameDiv="xs:col-span-4"
             helperText={errors?.addressNumber?.message}
             {...register("addressNumber")}
           />
@@ -472,10 +567,11 @@ export default function Inspections() {
             disabled={openNotifications.open}
             label="Complemento (opcional)"
             placeholder="ex: Apto 101"
+            classNameDiv="xs:col-span-4"
             {...register("addressComplement")}
           />
 
-          <h2 className="text-lg mt-3 mb-1 xs:col-span-2">Dados do imóvel para vistoria</h2>
+          <h2 className="text-lg mt-3 mb-1 xs:col-span-8">Dados do imóvel para vistoria</h2>
 
           <Input
             disabled={openNotifications.open}
@@ -485,6 +581,7 @@ export default function Inspections() {
             maxLength={5}
             label="Área do imóvel (m²)"
             placeholder="Área do imóvel (m²)"
+            classNameDiv="xs:col-span-4"
             helperText={errors?.propertyArea?.message}
             {...register("propertyArea")}
           />
@@ -519,6 +616,7 @@ export default function Inspections() {
                 isRadioInput={true}
                 label={option.label}
                 value={option.value}
+                classNameDiv="xs:col-span-4"
                 helperText={errors?.hasCourtyard?.message}
                 {...register("hasCourtyard")}
               />
@@ -537,6 +635,7 @@ export default function Inspections() {
                 isRadioInput={true}
                 label={option.label}
                 value={option.value}
+                classNameDiv="xs:col-span-4"
                 helperText={errors?.inspectionType?.message}
                 {...register("inspectionType")}
               />
@@ -547,7 +646,7 @@ export default function Inspections() {
             disabled={openNotifications.open}
             type="date"
             label="Data de vigência"
-            classNameDiv="xs:col-span-2"
+            classNameDiv="xs:col-span-8"
             min={currentDate}
             placeholder="Data de vigência"
             helperText={errors?.effectivenessDate?.message}
@@ -557,19 +656,19 @@ export default function Inspections() {
           {!openNotifications.open && (
             <ButtonComponent
               onClick={() => handleSubmit(handleCalculateInspectionPrice)()}
-              className="xs:col-span-2 m-auto mt-10"
+              className="xs:col-span-8 m-auto mt-10"
             >
               Realizar Simulação
             </ButtonComponent>
           )}
 
           {openNotifications.open && (
-            <NotificationsComponent className="z-20 xs:col-span-2 m-auto mt-10">
+            <NotificationsComponent className="z-20 xs:col-span-8 m-auto mt-10">
               <AiOutlineLoading size={24} className="animate-spin" /> {openNotifications.title}
             </NotificationsComponent>
           )}
         </div>
-      </MainComponent>
+      </MainComponent >
     </>
   )
 }

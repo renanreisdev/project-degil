@@ -1,4 +1,4 @@
-export const sendEmail = async (email: string, subject: string, message: string, name: string = '') => {
+export const sendEmail = async (email: string, subject: string, message: string, name: string = '', fileName?: string, fileURL?: string) => {
     try {
         const require = await fetch("/api/send-email", {
             method: "POST",
@@ -9,7 +9,9 @@ export const sendEmail = async (email: string, subject: string, message: string,
                 subject,
                 name,
                 email,
-                message
+                message,
+                fileName,
+                fileURL
             })
         })
 

@@ -4,7 +4,10 @@ type dataType = {
     subject?: string
     name?: string,
     email: string,
-    message?: string
+    message?: string,
+    fileName?: string,
+    fileURL?: string
+
 }
 export async function POST(request: Request) {
     const data: dataType = await request.json()
@@ -25,7 +28,13 @@ export async function POST(request: Request) {
             to: process.env.USERMAIL,
             replyTo: data.email,
             subject: data.subject || `E-mail de contato: ${data.email}`,
-            html: `${data.message}`
+            html: `${data.message}`,
+            attachments: [
+                {
+                    filename: data.fileName,
+                    path: data.fileURL
+                }
+            ]
         })
 
         return new Response(JSON.stringify({ message: "success" }))
