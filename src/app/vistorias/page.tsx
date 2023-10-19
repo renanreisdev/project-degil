@@ -1,27 +1,28 @@
 "use client"
 
-import { useForm } from "react-hook-form"
 import { useState } from "react"
-import { config } from "../../../config.local"
-import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
+import { useForm } from "react-hook-form"
 import { AiOutlineCloseCircle, AiOutlineLoading, AiOutlineWhatsApp } from "react-icons/ai"
-import { Input } from "@/components/Input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { InputRadioContainer } from "@/components/InputRadioContainer"
-import { MaskedInput } from "@/components/MaskedInput/MaskedInput"
+import validator from "validator"
+
+import { config } from "../../../config.local"
+import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
 import { emailMessage as defaultEmailMessage, whatsappMessage as defaultWhatsappMessage } from "@/utils/messageTemplates"
-import { ButtonComponent } from "@/components/ButtonComponent"
-import { NotificationsComponent } from "@/components/NotificationsComponent"
 import { sendEmail } from "@/utils/sendEmail"
 import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType, optionsPropertyType } from "@/utils/selectOptions"
+
+import { Header } from "@/components/Header"
 import { PageTitle } from "@/components/PageTitle"
 import { MainComponent } from "@/components/MainComponent"
-import { Header } from "@/components/Header"
-import { storage } from "@/utils/firebase"
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"
-import validator from "validator"
+import { InputRadioContainer } from "@/components/InputRadioContainer"
+import { Input } from "@/components/Input"
+import { MaskedInput } from "@/components/MaskedInput/MaskedInput"
+import { ButtonComponent } from "@/components/ButtonComponent"
 import { LinkComponent } from "@/components/LinkComponent"
+import { NotificationsComponent } from "@/components/NotificationsComponent"
+import { BsCheckLg } from "react-icons/bs"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
@@ -33,6 +34,7 @@ const schema = z.object({
       if (value.length > 0) return validator.isEmail(value);
       return true;
     }, { message: "Digite um e-mail válido" }),
+  carbonCopy: z.boolean(),
   propertyCode: z.string()
     .min(3, { message: "O código deve ter pelo menos 3 números" }),
   zipCode: z.string()
@@ -60,32 +62,23 @@ const schema = z.object({
   inspectionType: z.string({ invalid_type_error: "Selecione uma opção" })
     .min(1, { message: "Selecione uma opção" })
     .refine((value) => optionsInspectionType.some((option) => option.value === value)),
-  attachments: z.instanceof(FileList)
-    .transform(list => list[0])
-    .refine((value) => {
-      const allowedExtensions = [".doc", ".docx", ".pdf"];
-      const fileExtension = value?.name.split('.').pop();
-      if (allowedExtensions.includes(`.${fileExtension}`) || fileExtension === undefined) return true
-      return false;
-    }, { message: "Escolha um arquivo do tipo .pdf, .doc ou .docx" })
-    .refine((value) => {
-      if (value?.size <= 24 * 1024 * 1024 || value?.size === undefined) return true
-      return false
-    }, { message: "O arquivo deve ter no máximo 24MB" }),
   stateCity: z.string(),
 })
 
 export type FormDataProps = z.infer<typeof schema>
 
 export default function Inspections() {
-  const { register, handleSubmit, setValue, getValues, formState: { errors }, } = useForm<FormDataProps>({
+  const { register, handleSubmit, setValue, getValues, formState: { errors }, watch } = useForm<FormDataProps>({
     mode: "onBlur",
     resolver: zodResolver(schema)
   })
 
+  const watchEmail = watch('requesterEmail')
+  const watchCarbonCopy = watch('carbonCopy')
+
   const [openNotifications, setOpenNotifications] = useState({ open: false, title: '' })
   const [hasEmailBeenSent, setHasEmailBeenSent] = useState({ beenSent: false, notification: false })
-  const [emailResponse, setEmailResponse] = useState('')
+  const [emailResponse, setEmailResponse] = useState({ success: false, message: '' })
   const [emailHasBeenCompleted, setEmailHasBeenCompleted] = useState(false)
   const [searchingZipCode, setSearchingZipCode] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -99,20 +92,14 @@ export default function Inspections() {
   const [showDistanceInfo] = useState(config.SHOW_DISTANCE_INFO)
   const [distanceValueEmbedded] = useState(config.DISTANCE_VALUE_EMBEDDED)
   const [errorCalculatingDistance, setErrorCalculatingDistance] = useState(false)
-  const [hasAttachments, setHasAttachments] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [fileURL, setFileURL] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [helperTextSelectedFile, setHelperTextSelectedFile] = useState('')
 
   const handleCalculateInspectionPrice = async (data: FormDataProps) => {
-
     setShowModal(true)
     setOpenNotifications({ open: true, title: 'Calculando o total de distância...' })
 
     const response = await calculateInspectionPrice(data)
-
-    setOpenNotifications({ open: false, title: '' })
-    setShowValueInfoModal(true)
-    sendEmailAndWhatsApp(false, data)
 
     if (response.response === null) {
       setErrorCalculatingDistance(true)
@@ -132,6 +119,10 @@ export default function Inspections() {
     const inspection = response.inspectionPrice
 
     setPriceInspection(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspection))
+
+    setOpenNotifications({ open: false, title: '' })
+    setShowValueInfoModal(true)
+    sendEmailAndWhatsApp(false, data)
   }
 
   const sendEmailAndWhatsApp = async (whatsapp: boolean, data: FormDataProps) => {
@@ -139,7 +130,7 @@ export default function Inspections() {
     let response = null;
     const price = priceInspection
 
-    const { requesterName, requesterEmail, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType, attachments } = data
+    const { requesterName, requesterEmail, carbonCopy, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType } = data
 
     const furniture = hasFurniture === 'semiFurnished' ? "Semimobiliado" : hasFurniture === 'furnished' ? "Mobiliado" : "Sem mobília"
     const courtyard = hasCourtyard === 'yes' ? "Sim" : "Não"
@@ -198,17 +189,18 @@ export default function Inspections() {
       setEmailHasBeenCompleted(true)
 
       response = await sendEmail(
-        requesterEmail,
         subject,
         emailMessage,
-        requesterName,
-        attachments?.name,
-        fileURL
+        requesterEmail,
+        carbonCopy,
+        selectedFile
       )
 
       setHasEmailBeenSent({ beenSent: true, notification: true })
       setOpenNotifications({ open: false, title: '' })
-      setEmailResponse(response.message)
+
+      const message = response.success ? "E-mail enviado com sucesso" : "Falha ao enviar o e-mail"
+      setEmailResponse({ success: response.success, message: message })
 
       setTimeout(() => {
         setHasEmailBeenSent({ ...hasEmailBeenSent, notification: false })
@@ -224,7 +216,7 @@ export default function Inspections() {
 
     const response = await sendEmailAndWhatsApp(true, data)
 
-    if (response?.status || hasEmailBeenSent.beenSent) {
+    if ((response?.success || hasEmailBeenSent.beenSent) || !emailHasBeenCompleted) {
       setValue("address", "")
       setValue("addressComplement", "")
       setValue("addressNumber", "")
@@ -240,8 +232,8 @@ export default function Inspections() {
       setValue("requesterName", "")
       setValue("zipCode", "")
       setValue("requesterEmail", "")
-      //setValue("attachments", null!)
       setValue("stateCity", "")
+      setSelectedFile(null)
     }
 
     setShowModal(false)
@@ -293,28 +285,27 @@ export default function Inspections() {
     }
   }
 
-  const fileUploader = (attachments: File) => {
-    if (attachments.name.length > 0) {
-      const storageRef = ref(storage, `temporary/${attachments.name}`);
-      const upload = uploadBytesResumable(storageRef, attachments);
+  const fileUploader = async (selectedFile: File) => {
+    const allowedExtensions = [".doc", ".docx", ".pdf"];
 
-      upload.on(
-        "state_changed",
-        snapshot => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        },
-        error => {
-          alert(error)
-        },
-        () => {
-          getDownloadURL(upload.snapshot.ref).then(downloadURL => {
-            setFileURL(downloadURL)
-          })
-        }
-      )
-    } else {
-      console.log('Arquivo não encontrado!');
+    if (selectedFile.name.length > 0) {
+      const fileExtension = selectedFile.name.split('.').pop();
+
+      if (!allowedExtensions.includes(`.${fileExtension}`)) {
+        setHelperTextSelectedFile("Escolha um arquivo do tipo .pdf, .doc ou .docx")
+        setSelectedFile(null)
+        return
+      }
+
+      if (selectedFile.size > 25 * 1024 * 1024) {
+        setHelperTextSelectedFile("O arquivo deve ter no máximo 25MB")
+        setSelectedFile(null)
+        return
+      }
+
+      setHelperTextSelectedFile("")
+      setSelectedFile(selectedFile)
+      return
     }
   }
 
@@ -326,9 +317,9 @@ export default function Inspections() {
             setShowModal(false); setShowValueInfoModal(false)
           }
         }}
-        className={`${showModal ? 'opacity-60 z-20' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
+        className={`${showModal ? 'opacity-60 z-30' : 'opacity-0 -z-10'} fixed inset-0 bg-black transition-all ease-linear duration-300`}></div>
 
-      <div className={`${showValueInfoModal ? 'opacity-100 z-20' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[430px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
+      <div className={`${showValueInfoModal ? 'opacity-100 z-30' : 'opacity-0 -z-10'} flex flex-col items-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-[430px] p-5 rounded-sm shadow-sm bg-white transition-all ease-linear duration-300`}>
         <AiOutlineCloseCircle
           size={32}
           className="absolute top-3 right-3 cursor-pointer text-slate-400"
@@ -374,7 +365,7 @@ export default function Inspections() {
               {...register("requesterEmail")}
             />
 
-            {hasAttachments && (
+            {selectedFile && (
               <p className="text-red-500 text-sm">* Você selecionou um anexo mas não inseriu um email...</p>
             )}
           </div>
@@ -395,7 +386,7 @@ export default function Inspections() {
       <Header />
       <MainComponent className="items-center">
         {hasEmailBeenSent.notification && (
-          <NotificationsComponent size="md" position="bottom-right" className={`z-20 ${emailResponse.includes("Falha") ? 'bg-red-500' : ''}`}>{emailResponse}</NotificationsComponent>
+          <NotificationsComponent size="md" position="bottom-right" className={`z-20 ${!emailResponse.success ? 'bg-red-500' : ''}`}>{emailResponse.message}</NotificationsComponent>
         )}
 
         <PageTitle title="Vistorias - Apresentação Comercial" />
@@ -422,6 +413,7 @@ export default function Inspections() {
 
           <LinkComponent
             href="https://drive.google.com/file/d/1Mot-8HNgHcu4cLnFE3DaWm6tKzpAAj51/view?usp=sharing"
+            target="_blank"
             model="outline"
           >
             Ver modelo de entrada
@@ -432,6 +424,7 @@ export default function Inspections() {
 
           <LinkComponent
             href="https://drive.google.com/file/d/1wPil3eQrlGrBb3PFo2oGJ91qzlyfguDn/view?usp=sharing"
+            target="_blank"
             model="outline"
           >
             Ver modelo de Saída
@@ -468,37 +461,66 @@ export default function Inspections() {
             {...register("requesterName")}
           />
 
-          {(!showModal && !emailHasBeenCompleted) && (
+          {(!showModal || !emailHasBeenCompleted) && (
             <>
-              <Input
-                type="email"
-                disabled={openNotifications.open}
-                label="E-mail do solicitante"
-                placeholder="ex: email@gmail.com"
-                classNameDiv="xs:col-span-5"
-                helperText={errors?.requesterEmail?.message}
-                {...register("requesterEmail")}
-              />
+              <div className="xs:col-span-5 flex justify-between items-center gap-1">
+                <Input
+                  type="email"
+                  disabled={openNotifications.open}
+                  label="E-mail do solicitante"
+                  placeholder="ex: email@gmail.com"
+                  classNameDiv="flex-1"
+                  helperText={errors?.requesterEmail?.message}
+                  {...register("requesterEmail")}
+                />
+                {watchEmail !== undefined && validator.isEmail(watchEmail) && (
+                  <div className={`relative w-5 h-5 mt-3 border-2 rounded cursor-pointer ${watchCarbonCopy ? 'border-secondary' : 'border-slate-400'} transition-all ease-in-out duration-300 hover:scale-125 hover:border-secondary`}>
+                    {watchCarbonCopy &&
+                      <BsCheckLg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-secondary transition-all ease-in-out duration-300 hover:scale-125" />
+                    }
+                    <Input
+                      type="checkbox"
+                      label="CC"
+                      checked={watchCarbonCopy}
+                      title="Com cópia para o e-mail informado"
+                      alt="Com cópia para o e-mail informado"
+                      classNameLabel="m-0"
+                      classNameDiv="absolute -top-5 left-0"
+                      classNameInput="w-5 h-5 cursor-pointer opacity-0"
+                      {...register("carbonCopy")}
+                    />
+                  </div>
+                )}
+              </div>
 
-              <div className="xs:col-span-3 relative mt-5 w-full flex flex-start items-center">
+              <div className="xs:col-span-3 relative mt-5 w-full flex flex-start justify-between items-center gap-1">
                 <Input
                   type="file"
+                  name="selectedFile"
                   accept=".pdf, .doc, .docx"
                   disabled={openNotifications.open}
-                  label={uploadProgress > 0 && uploadProgress < 100 ? "Carregando..." : hasAttachments ? "Documento anexado" : "Anexar documento"}
+                  label={selectedFile ? selectedFile.name : "Anexar documento"}
                   classNameDiv="flex-1"
-                  classNameLabel={`m-0 border border-slate-400 rounded text-center text-neutral-500 flex-1 px-3 py-[0.4rem] cursor-pointer ${uploadProgress === 100 ? 'text-white bg-secondary border-none' : ''}`}
+                  classNameLabel={`m-0 max-w-[220px] border border-slate-400 rounded overflow-hidden whitespace-nowrap text-ellipsis text-center text-slate-400 text-base flex-1 px-3 py-1 cursor-pointer ${selectedFile ? 'text-white bg-secondary border-none' : ''}`}
                   classNameInput="hidden"
-                  helperText={errors?.attachments?.message}
-                  {...register("attachments", {
-                    onChange: (e) => {
+                  helperText={helperTextSelectedFile}
+                  onChange={
+                    (e) => {
+                      if (e.target.files === null) return
                       if (e.target.files.length > 0)
-                        fileUploader(e.target.files[0]);
-
-                      setHasAttachments(e.target.files.length > 0)
+                        fileUploader(e.target.files[0])
                     }
-                  })}
+                  }
                 />
+                {selectedFile && (
+                  <AiOutlineCloseCircle
+                    size={24}
+                    title="Cancelar anexo"
+                    alt="Cancelar anexo"
+                    className="cursor-pointer text-slate-400 -mt-2 transition-all ease-in-out duration-300 hover:scale-125 hover:text-secondary"
+                    onClick={() => { setSelectedFile(null) }}
+                  />
+                )}
               </div>
             </>
 
