@@ -21,7 +21,7 @@ const config: Config = {
       },
       borderColor: {
         primary: "#03466e",
-        orange: "#ed631d",
+        secondary: "#ed631d",
         hover: "#303f47"
       },
     },
