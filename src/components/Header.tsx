@@ -18,7 +18,7 @@ export const Header = () => {
     };
 
     return (
-        <div className="z-10 fixed top-0 left-0 flex justify-center w-full px-10 shadow-sm shadow-slate-500 bg-primary">
+        <div className="z-20 fixed top-0 left-0 flex justify-center w-full px-10 shadow-sm shadow-slate-500 bg-primary">
             <header className="flex-1 flex flex-col justify-center items-center max-w-screen-xl bg-primary xs:justify-between xs:flex-row">
                 <Link href="/">
                     <Image src={logo} width={168} height={84} alt="Degil Engenharia" />
@@ -29,7 +29,7 @@ export const Header = () => {
                         <>
                             <AiOutlineClose
                                 onClick={handleNav}
-                                className="2md:hidden text-white absolute top-6 right-6 z-10 cursor-pointer"
+                                className="2md:hidden text-white absolute top-6 right-6 z-20 cursor-pointer"
                                 size={30}
                             />
 
@@ -77,7 +77,7 @@ export const Header = () => {
                         <>
                             <AiOutlineMenu
                                 onClick={handleNav}
-                                className="2md:hidden text-white absolute top-6 right-6 z-10 pointer"
+                                className="2md:hidden text-white absolute top-6 right-6 z-20 pointer"
                                 size={30}
                             />
                         </>

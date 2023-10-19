@@ -12,7 +12,7 @@ export const NotificationsComponent = ({ children, size, position, className }: 
     const notificationPosition = position === "bottom-right" ? "fixed bottom-5 right-5" : position === "bottom-left" ? "fixed bottom-5 left-5" : ""
     return (
         <span
-            className={twMerge(`z-10 ${notificationPosition} flex justify-center items-center gap-3 ${notificationSize} text-white bg-primary rounded shadow-sm`, className)}
+            className={twMerge(`z-50 ${notificationPosition} flex justify-center items-center gap-3 ${notificationSize} text-white bg-primary rounded shadow-sm`, className)}
         >
             {children}
         </span>
