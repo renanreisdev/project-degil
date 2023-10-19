@@ -1,4 +1,3 @@
-import { config } from "../../config.local"
 import { ServicesItem } from "./ServicesItem"
 
 export const Services = () => {
@@ -7,7 +6,7 @@ export const Services = () => {
         {
             title: 'Vistorias - Apresentação Comercial',
             description: 'Nossas vistorias são realizadas na forma de laudo fotográfico e descritivo de todos os itens do ambiente, assim como testes mecânicos de portas, armários e janelas e testes hidráulicos e elétricos dos itens pertinentes. Analisamos também área externas, motores, portões, piscinas e banheiras.',
-            link: '/regularizacao',
+            link: '/vistorias',
             targetBlank: false
         },
         {
