@@ -9,7 +9,7 @@ import validator from "validator"
 
 import { config } from "../../../config.local"
 import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
-import { emailMessage as defaultEmailMessage, whatsappMessage as defaultWhatsappMessage } from "@/utils/messageTemplates"
+import { selectTheCorrectMessage as defaultMessage } from "@/utils/messageTemplates"
 import { sendEmail } from "@/utils/sendEmail"
 import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType } from "@/utils/selectOptions"
 
@@ -23,18 +23,19 @@ import { ButtonComponent } from "@/components/ButtonComponent"
 import { LinkComponent } from "@/components/LinkComponent"
 import { NotificationsComponent } from "@/components/NotificationsComponent"
 import { BsCheckLg } from "react-icons/bs"
+import { TextAreaComponent } from "@/components/TextAreaComponent"
 
 const currentDate = new Date().toISOString().split("T")[0];
 
 const schema = z.object({
   requesterName: z.string()
     .min(3, { message: "O nome deve ter pelo menos 3 caracteres" }).transform((value) => value.trim()),
-  requesterEmail: z.string().
-    refine((value) => {
+  requesterEmail: z.string()
+    .refine((value) => {
       if (value.length > 0) return validator.isEmail(value);
       return true;
     }, { message: "Digite um e-mail válido" }),
-  carbonCopy: z.boolean(),
+  carbonCopy: z.boolean().optional(),
   propertyCode: z.string()
     .min(3, { message: "O código deve ter pelo menos 3 números" }),
   zipCode: z.string()
@@ -62,6 +63,7 @@ const schema = z.object({
   inspectionType: z.string({ invalid_type_error: "Selecione uma opção" })
     .min(1, { message: "Selecione uma opção" })
     .refine((value) => optionsInspectionType.some((option) => option.value === value)),
+  comments: z.string(),
   stateCity: z.string(),
 })
 
@@ -88,22 +90,29 @@ export default function Inspections() {
   const [showModal, setShowModal] = useState(false)
   const [showValueInfoModal, setShowValueInfoModal] = useState(false)
 
+  const [CALCULATE_DISTANCE] = useState(config.CALCULATE_DISTANCE)
+  const [SHOW_DISTANCE_INFO] = useState(config.SHOW_DISTANCE_INFO)
+  const [DISTANCE_VALUE_EMBEDDED] = useState(config.DISTANCE_VALUE_EMBEDDED)
+  const [ALWAYS_SEND_EMAIL] = useState(config.ALWAYS_SEND_EMAIL)
+
   const [priceInspection, setPriceInspection] = useState('')
   const [inspectionCostPlusDistance, setInspectionCostPlusDistance] = useState('')
   const [costDistance, setCostDistance] = useState('')
   const [distance, setDistance] = useState('')
-  const [calculateDistance] = useState(config.CALCULATE_DISTANCE)
-  const [showDistanceInfo] = useState(config.SHOW_DISTANCE_INFO)
-  const [distanceValueEmbedded] = useState(config.DISTANCE_VALUE_EMBEDDED)
   const [errorCalculatingDistance, setErrorCalculatingDistance] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [helperTextSelectedFile, setHelperTextSelectedFile] = useState('')
 
   const handleCalculateInspectionPrice = async (data: FormDataProps) => {
+    console.log("Entrei na função")
     setShowModal(true)
     setOpenNotifications({ open: true, message: 'Calculando o total de distância...', type: 'warning' })
 
     const response = await calculateInspectionPrice(data)
+
+    let inspectionPlusDistance = ''
+    let costDistance = ''
+    let distance = ''
 
     if (response.response === null) {
       setErrorCalculatingDistance(true)
@@ -111,37 +120,41 @@ export default function Inspections() {
     else {
       setErrorCalculatingDistance(false)
 
-      const inspectionPlusDistance = response.inspectionPrice + response.costDistance
-      setInspectionCostPlusDistance(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspectionPlusDistance))
-      setCostDistance(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(response.costDistance))
-      if (response.distance > 1)
-        setDistance(response.distance.toLocaleString('pt-BR', { style: "decimal", minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "km")
-      else {
-        setDistance(response.distance * 1000 + "m")
-      }
-    }
-    const inspection = response.inspectionPrice
+      inspectionPlusDistance = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(response.inspectionPrice + response.costDistance)
+      setInspectionCostPlusDistance(inspectionPlusDistance)
 
-    setPriceInspection(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspection))
+      costDistance = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(response.costDistance)
+      setCostDistance(costDistance)
+
+      if (response.distance > 1)
+        distance = response.distance.toLocaleString('pt-BR', { style: "decimal", minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " km"
+      else if (response.distance > 0)
+        distance = response.distance * 1000 + " m"
+      else
+        distance = "(Grátis)"
+
+      setDistance(distance)
+    }
+
+    const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(response.inspectionPrice)
+    setPriceInspection(price)
 
     setOpenNotifications({ open: false, message: '', type: 'warning' })
     setShowValueInfoModal(true)
-    sendEmailAndWhatsApp(false, data)
+    sendEmailAndWhatsApp(false, data, { distance: distance, costDistance: costDistance, inspectionCostPlusDistance: inspectionPlusDistance, price: price })
   }
 
-  const sendEmailAndWhatsApp = async (whatsapp: boolean, data: FormDataProps) => {
-
+  const sendEmailAndWhatsApp = async (whatsapp: boolean, data: FormDataProps, distanceInfo?: { distance: string, costDistance: string, inspectionCostPlusDistance: string, price: string }) => {
     let response = null;
-    const price = priceInspection
 
-    const { requesterName, requesterEmail, carbonCopy, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType } = data
+    const { requesterName, requesterEmail, carbonCopy, propertyCode, zipCode, city, neighborhood, address, addressNumber, addressComplement, propertyArea, hasFurniture, hasCourtyard, effectivenessDate, inspectionType, comments } = data
 
     const furniture = hasFurniture === 'semiFurnished' ? "Semimobiliado" : hasFurniture === 'furnished' ? "Mobiliado" : "Sem mobília"
     const courtyard = hasCourtyard === 'yes' ? "Sim" : "Não"
     const inspection = inspectionType === 'entry' ? "Entrada" : "Saída"
     const formattedDate = new Date(effectivenessDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 
-    const emailMessage = defaultEmailMessage({
+    const emailMessage = defaultMessage({
       name: requesterName,
       email: requesterEmail,
       propertyCode,
@@ -156,15 +169,19 @@ export default function Inspections() {
       courtyard,
       effectivenessDate: formattedDate,
       inspectionType: inspection,
-      price: price
-    })
+      comments,
+      price: distanceInfo?.price ? distanceInfo?.price : priceInspection,
+      pricePlusCostDistance: distanceInfo?.inspectionCostPlusDistance ? distanceInfo?.inspectionCostPlusDistance : inspectionCostPlusDistance,
+      costDistance: distanceInfo?.costDistance ? distanceInfo?.costDistance : costDistance,
+      distance: distanceInfo?.distance ? distanceInfo?.distance : distance
+    }, true, CALCULATE_DISTANCE)
 
     let subject = `Simulação de Vistoria - ${requesterName}`
 
     if (!emailHasBeenCompleted)
       subject = `Solicitação de Vistoria - ${requesterName}`
 
-    const whatsappMessage = defaultWhatsappMessage({
+    const whatsappMessage = defaultMessage({
       name: requesterName,
       email: requesterEmail,
       propertyCode,
@@ -179,17 +196,20 @@ export default function Inspections() {
       courtyard,
       effectivenessDate: formattedDate,
       inspectionType: inspection,
-      price: price,
-      subject
-    })
+      comments,
+      price: distanceInfo?.price ? distanceInfo?.price : priceInspection,
+      pricePlusCostDistance: distanceInfo?.inspectionCostPlusDistance ? distanceInfo?.inspectionCostPlusDistance : inspectionCostPlusDistance,
+      costDistance: distanceInfo?.costDistance ? distanceInfo?.costDistance : costDistance,
+      distance: distanceInfo?.distance ? distanceInfo?.distance : distance
+    }, false, CALCULATE_DISTANCE)
 
     const whatsappSend = `https://api.whatsapp.com/send?phone=+55${config.PHONE}&text=${encodeURIComponent(whatsappMessage)}`
 
     if (whatsapp)
       window.open(whatsappSend, '_blank')
 
-    if (getValues("requesterEmail").length > 0) {
-      setOpenNotifications({ open: true, message: 'Enviando e-mail...', type: 'warning' })
+    if (getValues("requesterEmail").length > 0 || (ALWAYS_SEND_EMAIL && !emailHasBeenCompleted)) {
+      setOpenNotifications({ open: true, message: 'Enviando e-mail...', type: 'processing' })
       setEmailHasBeenCompleted(true)
 
       response = await sendEmail(
@@ -201,25 +221,27 @@ export default function Inspections() {
       )
 
       if (response.success)
-        setOpenNotifications({ open: true, message: 'E-mail enviado com sucesso', type: 'success' })
+        setOpenNotifications({ open: true, message: 'E-mail enviado com sucesso!', type: 'success' })
       else
-        setOpenNotifications({ open: true, message: response.message, type: 'error' })
+        setOpenNotifications({ open: true, message: 'Falha ao enviar e-mail!', type: 'error' })
 
       setTimeout(() => {
-        setOpenNotifications({ open: false, message: '', type: 'warning' })
-      }, 5000)
+        setOpenNotifications({ ...openNotifications, open: false })
+      }, 2000)
     }
 
     return response;
   }
 
   const onSubmit = async (data: FormDataProps) => {
-    if (emailHasBeenCompleted)
+    if (!emailHasBeenCompleted && getValues("requesterEmail").length > 0)
+      setEmailHasBeenCompleted(true)
+    else
       setValue("requesterEmail", "")
 
     const response = await sendEmailAndWhatsApp(true, data)
 
-    if (response?.success || !emailHasBeenCompleted) {
+    if (response?.success || response === null) {
       setValue("address", "")
       setValue("addressComplement", "")
       setValue("addressNumber", "")
@@ -235,6 +257,8 @@ export default function Inspections() {
       setValue("requesterName", "")
       setValue("zipCode", "")
       setValue("requesterEmail", "")
+      setValue("comments", "")
+      setValue("carbonCopy", false)
       setValue("stateCity", "")
       setSelectedFile(null)
     }
@@ -333,14 +357,14 @@ export default function Inspections() {
         <div className="w-full h-1 bg-secondary mb-5"></div>
 
         <p className="text-lg text-primary font-semibold">
-          Valor da vistoria: <strong className="text-secondary font-semibold">{distanceValueEmbedded ? inspectionCostPlusDistance : priceInspection}</strong>
+          Valor da vistoria: <strong className="text-secondary font-semibold">{DISTANCE_VALUE_EMBEDDED ? inspectionCostPlusDistance : priceInspection}</strong>
         </p>
 
-        {calculateDistance && showDistanceInfo && (
+        {CALCULATE_DISTANCE && SHOW_DISTANCE_INFO && (
           <>
             {!errorCalculatingDistance && (
               <>
-                {!distanceValueEmbedded && (
+                {!DISTANCE_VALUE_EMBEDDED && (
                   <>
                     <p className="text-xl text-secondary font-semibold">+</p>
                     <p className="text-sm text-primary font-semibold">Distância de deslocamento: <strong className="text-secondary font-semibold">{distance}</strong></p>
@@ -348,7 +372,7 @@ export default function Inspections() {
                   </>
                 )}
 
-                {distanceValueEmbedded && <p className="text-sm">* Distância de deslocamento calculado: {distance} {costDistance.includes("R$ 0,00") ? '(grátis)' : ''}</p>}
+                {DISTANCE_VALUE_EMBEDDED && <p className="text-sm">* Distância de deslocamento calculado: {distance} {costDistance.includes("(Grátis)") ? costDistance : ''}</p>}
               </>
             )}
 
@@ -380,7 +404,7 @@ export default function Inspections() {
           disabled={openNotifications.open}
           onClick={() => handleSubmit(onSubmit)()}
           buttonSize="md"
-          className="flex justify-center items-center gap-2 mt-3"
+          className="flex justify-center items-center gap-2 mt-3 disabled:bg-slate-400"
         >
           Enviar WhatsApp <AiOutlineWhatsApp size={24} />
         </ButtonComponent>
@@ -470,9 +494,9 @@ export default function Inspections() {
             {...register("requesterName")}
           />
 
-          {(!showModal || !emailHasBeenCompleted) && (
+          {(!showModal) && (
             <>
-              <div className="xs:col-span-5 flex justify-between items-center gap-1">
+              <div className="xs:col-span-5 flex justify-between items-center gap-3">
                 <Input
                   type="email"
                   disabled={openNotifications.open}
@@ -502,15 +526,15 @@ export default function Inspections() {
                 )}
               </div>
 
-              <div className="xs:col-span-3 relative mt-5 w-full flex flex-start justify-between items-center gap-1">
+              <div className="xs:col-span-3 mt-5 w-full flex flex-start justify-between items-center gap-1">
                 <Input
                   type="file"
                   name="selectedFile"
                   accept=".pdf, .doc, .docx"
                   disabled={openNotifications.open}
                   label={selectedFile ? selectedFile.name : "Anexar documento"}
-                  classNameDiv="flex-1"
-                  classNameLabel={`m-0 max-w-[220px] border border-slate-400 rounded overflow-hidden whitespace-nowrap text-ellipsis text-center text-slate-400 text-base flex-1 px-3 py-1 cursor-pointer ${selectedFile ? 'text-white bg-secondary border-none' : ''}`}
+                  classNameDiv={`${selectedFile ? 'w-[calc(100%_-_30px)]' : 'w-full'}`}
+                  classNameLabel={`m-0 border border-slate-400 rounded overflow-hidden whitespace-nowrap text-ellipsis text-center text-slate-400 text-base flex-1 px-3 py-1 cursor-pointer ${selectedFile ? 'text-white bg-secondary border-none' : ''}`}
                   classNameInput="hidden"
                   helperText={helperTextSelectedFile}
                   onChange={
@@ -606,6 +630,17 @@ export default function Inspections() {
 
           <Input
             disabled={openNotifications.open}
+            type="date"
+            label="Data de vigência"
+            classNameDiv="xs:col-span-4"
+            min={currentDate}
+            placeholder="Data de vigência"
+            helperText={errors?.effectivenessDate?.message}
+            {...register("effectivenessDate")}
+          />
+
+          <Input
+            disabled={openNotifications.open}
             type="number"
             min={1}
             max={99999}
@@ -673,31 +708,22 @@ export default function Inspections() {
             ))}
           </InputRadioContainer>
 
-          <Input
+          <TextAreaComponent
             disabled={openNotifications.open}
-            type="date"
-            label="Data de vigência"
-            classNameDiv="xs:col-span-8"
-            min={currentDate}
-            placeholder="Data de vigência"
-            helperText={errors?.effectivenessDate?.message}
-            {...register("effectivenessDate")}
+            label="Observações"
+            placeholder={`Ex: As chaves estão na imobiliária`}
+            classNameDiv="xs:col-span-4"
+            classNameTextArea="min-h-[36px]"
+            {...register("comments")}
           />
 
-          {/* {!openNotifications.open && ( */}
           <ButtonComponent
+            disabled={openNotifications.open}
             onClick={() => handleSubmit(handleCalculateInspectionPrice)()}
-            className="xs:col-span-8 m-auto mt-10"
+            className="xs:col-span-8 m-auto mt-10 disabled:bg-slate-400"
           >
             Realizar Simulação
           </ButtonComponent>
-          {/* )} */}
-
-          {/* {openNotifications.open && (
-            <NotificationsComponent className="z-20 xs:col-span-8 m-auto mt-10">
-              <AiOutlineLoading size={24} className="animate-spin" /> {openNotifications.title}
-            </NotificationsComponent>
-          )} */}
         </div>
       </MainComponent >
     </>
