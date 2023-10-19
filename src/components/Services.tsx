@@ -6,7 +6,7 @@ export const Services = () => {
     const data = [
         {
             title: 'Vistorias - Apresentação Comercial',
-            description: 'Olá, somos a Degil Engenharia e nessa apresentação oferecemos vistorias imobiliárias. Estamos aqui disponibilizando a você alguns serviços em vistorias para pequenas, médias e grandes imobiliárias, CORRETORES, ADVOGADOS, Profissionais autônomos e liberais. Atuamos na grande Porto Alegre, a uma chamada de WhatsApp. Clique em "Saiba Mais" e conheça um pouco mais sobre nossos serviços.',
+            description: 'Nossas vistorias são realizadas na forma de laudo fotográfico e descritivo de todos os itens do ambiente, assim como testes mecânicos de portas, armários e janelas e testes hidráulicos e elétricos dos itens pertinentes. Analisamos também área externas, motores, portões, piscinas e banheiras.',
             link: '/regularizacao',
             targetBlank: false
         },
@@ -22,22 +22,10 @@ export const Services = () => {
             link: '/consultoria',
             targetBlank: false
         },
-        {
-            title: 'Projetos',
-            description: 'Auxiliamos na concretização das ideias dos clientes e entendemos que o projeto é o ponto de congruência de todo o processo da obra. Um projeto bem feito garante comunicação clara entre todos os responsáveis, diminuindo o risco e os custos da obra. Utilizamos tanto ferramentas 2D, como 3D, entregando realismo fantástico às ideias.',
-            link: `http://wa.me/55${config.PHONE}`,
-            targetBlank: true
-        },
-        {
-            title: 'Execução de obras',
-            description: 'Oferecemos diversas formas de contrato, tanto para quem gosta de envolver-se mais na obra, como para quem prefere apenas receber os relatórios e reuniões periódicas. Escolhemos os nossos colabores com altos critérios de ética e perícia, tratando-os com respeito e igualdade, o que impacta positivamente no resultado final, garantindo o sucesso do projeto.',
-            link: `http://wa.me/55${config.PHONE}`,
-            targetBlank: true
-        }
     ]
 
     return (
-        <div id="services" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div id="services" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {data.map((item) => (
                 <ServicesItem
                     key={item.title}
