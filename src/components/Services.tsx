@@ -1,8 +1,14 @@
-import { config } from "../../config.local"
 import { ServicesItem } from "./ServicesItem"
 
 export const Services = () => {
+
     const data = [
+        {
+            title: 'Vistorias - Apresentação Comercial',
+            description: 'Nossas vistorias são realizadas na forma de laudo fotográfico e descritivo de todos os itens do ambiente, assim como testes mecânicos de portas, armários e janelas e testes hidráulicos e elétricos dos itens pertinentes. Analisamos também área externas, motores, portões, piscinas e banheiras.',
+            link: '/vistorias',
+            targetBlank: false
+        },
         {
             title: 'Regularização de residências e comércios',
             description: 'Valorize seu imóvel em até 30% e viabilize a venda por financiamento com mudanças simples. Analisamos a situação cadastral, indicamos o melhor processo e aprovamos as mudanças nos órgãos competentes. Obtenha o Laudos dos bombeiros e da vigilância sanitária, garantindo a segurançados seus clientes e do seu negócio.',
@@ -15,22 +21,10 @@ export const Services = () => {
             link: '/consultoria',
             targetBlank: false
         },
-        {
-            title: 'Projetos',
-            description: 'Auxiliamos na concretização das ideias dos clientes e entendemos que o projeto é o ponto de congruência de todo o processo da obra. Um projeto bem feito garante comunicação clara entre todos os responsáveis, diminuindo o risco e os custos da obra. Utilizamos tanto ferramentas 2D, como 3D, entregando realismo fantástico às ideias.',
-            link: `http://wa.me/55${config.PHONE}`,
-            targetBlank: true
-        },
-        {
-            title: 'Execução de obras',
-            description: 'Oferecemos diversas formas de contrato, tanto para quem gosta de envolver-se mais na obra, como para quem prefere apenas receber os relatórios e reuniões periódicas. Escolhemos os nossos colabores com altos critérios de ética e perícia, tratando-os com respeito e igualdade, o que impacta positivamente no resultado final, garantindo o sucesso do projeto.',
-            link: `http://wa.me/55${config.PHONE}`,
-            targetBlank: true
-        }
     ]
 
     return (
-        <div id="services" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div id="services" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {data.map((item) => (
                 <ServicesItem
                     key={item.title}

@@ -21,9 +21,12 @@ const config: Config = {
       },
       borderColor: {
         primary: "#03466e",
-        orange: "#ed631d",
+        secondary: "#ed631d",
         hover: "#303f47"
       },
+      backgroundImage: {
+        'bg-degil': "url('../assets/bg-degil.png')",
+      }
     },
     screens: {
       'xs': '544px',

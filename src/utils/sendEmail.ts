@@ -1,27 +1,26 @@
-export const sendEmail = async (email: string, subject: string, message: string, name: string = '') => {
+export const sendEmail = async (subject: string, message: string, email?: string, carbonCopy?: boolean, file?: File | null) => {
     try {
-        const require = await fetch("/api/sendEmail", {
+        const formData = new FormData();
+
+        if (file !== undefined && file !== null)
+            formData.append('file', file as File, file?.name)
+
+        formData.append('json', JSON.stringify({
+            subject,
+            message,
+            email,
+            carbonCopy
+        }))
+
+        const require = await fetch("/api/send-email", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                subject,
-                name,
-                email,
-                message
-            })
+            body: formData,
         })
 
         const response = await require.json()
-
-        if (response.message === "success") {
-            return { status: true, message: "E-mail enviado com sucesso!" }
-        } else {
-            return { status: false, message: "Falha ao enviar o e-mail!" }
-        }
+        return response
 
     } catch (error: any) {
-        return { status: false, message: "Falha ao enviar o e-mail!" }
+        return { success: false }
     }
 }

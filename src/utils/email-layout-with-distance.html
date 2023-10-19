@@ -55,7 +55,7 @@
                 <div
                     style="display: inline-block; margin: 10px 0 0 0; text-align: center; width: 31%; min-width: 126px;">
                     <p style="color: #ed631d;"><b>Valor da Vistoria</b></p>
-                    <p style="color: #f3f8fc; margin-top: 5px;"><b>${price}</b></p>
+                    <p style="color: #f3f8fc; margin-top: 5px;"><b>${pricePlusCostDistance}</b></p>
                 </div>
             </div>
         </div>
@@ -85,13 +85,31 @@
                 </div>
 
                 <div style="padding: 10px; border: 1px solid #eee; border-radius: 5px;">
-                    <div style="display: inline-block; margin-bottom: 10px;">
+                    <div style="display: inline-block; width: 270px; margin-bottom: 10px;">
                         <h3 style="margin-bottom: 25px; color: #03466e;">Dados da vistoria</h3>
                         <p style="margin-bottom: 3px;"><b>Área do imóvel</b>: ${propertyArea}m²</p>
                         <p style="margin-bottom: 3px;"><b>Possui mobília</b>: ${furniture}</p>
                         <p style="margin-bottom: 3px;"><b>Possui pátio</b>: ${courtyard}</p>
                         <p style="margin-bottom: 3px; color: #f3f8fc">.</p>
                     </div>
+
+                    <div style="display: inline-block; width: calc(100% - 275px); min-width: 280px;">
+                        <div style="float: right;">
+                            <p style="color: #03466e; font-weight: 700; margin-bottom: 25px;"><b>Observações de
+                                    Distância</b>:
+                            </p>
+                            <p style="margin-bottom: 3px;"><b
+                                    title="Distância total (Degil até o imóvel e imóvel até a Degil)">Distância
+                                    total</b>: ${distance}</p>
+                            <p style="margin-bottom: 3px;"><b>Valor:</b>: ${costDistance.includes("R$ 0,00") ?
+                                '(grátis)' : costDistance}</p>
+                            <p style="margin-bottom: 3px;"><b>Valor Vistoria</b>:
+                                ${inspectionCost}</p>
+                            <p style="margin-bottom: 3px;"><b style="color:#ed631d">Total Vistoria + Distância</b>:
+                                ${pricePlusCostDistance}</p>
+                        </div>
+                    </div>
+                    <div style="clear: both;"></div>
                 </div>
 
                 <div style="padding: 10px; border: 1px solid #eee; border-radius: 5px;">

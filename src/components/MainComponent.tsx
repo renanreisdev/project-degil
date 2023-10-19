@@ -1,6 +1,5 @@
 import { HTMLAttributes } from "react"
 import { twMerge } from "tailwind-merge"
-import { boolean } from "zod"
 
 type MainComponentProps = HTMLAttributes<HTMLDivElement> & {
     children: React.ReactNode
