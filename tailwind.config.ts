@@ -23,6 +23,9 @@ const config: Config = {
         primary: "#03466e",
         secondary: "#ed631d",
         hover: "#303f47"
+      },
+      backgroundImage: {
+        'bg-degil': "url('../assets/bg-degil.png')",
       }
     },
     screens: {

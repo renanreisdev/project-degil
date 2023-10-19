@@ -36,7 +36,7 @@ export const ContactForm = () => {
 
     const onSubmit = async (data: DataProps) => {
 
-        setOpenNotifications({ open: true, message: 'Enviando e-mail...', type: 'warning' })
+        setOpenNotifications({ open: true, message: 'Enviando e-mail...', type: 'processing' })
 
         const subject = `Contato - ${data.email}`
 
@@ -51,8 +51,8 @@ export const ContactForm = () => {
             setOpenNotifications({ open: true, message: 'Falha ao enviar e-mail!', type: 'error' })
 
         setTimeout(() => {
-            setOpenNotifications({ open: false, message: '', type: 'warning' })
-        }, 5000)
+            setOpenNotifications({ ...openNotifications, open: false })
+        }, 2000)
 
     }
 
