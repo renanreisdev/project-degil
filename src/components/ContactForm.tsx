@@ -20,34 +20,40 @@ const schema = z.object({
 
 export type DataProps = z.infer<typeof schema>
 
+type notificationType = {
+    open: boolean,
+    message: string,
+    type: 'warning' | 'processing' | 'success' | 'error'
+}
+
 export const ContactForm = () => {
     const { register, handleSubmit, setValue, formState: { errors }, } = useForm<DataProps>({
         mode: "onBlur",
         resolver: zodResolver(schema)
     })
-    const [isSendingEmail, setIsSendingEmail] = useState(false)
-    const [hasEmailBeenSent, setHasEmailBeenSent] = useState(false)
-    const [emailResponse, setEmailResponse] = useState('')
+
+    const [openNotifications, setOpenNotifications] = useState<notificationType>({ open: false, message: '', type: 'warning' })
 
     const onSubmit = async (data: DataProps) => {
 
-        setIsSendingEmail(true)
+        setOpenNotifications({ open: true, message: 'Enviando e-mail...', type: 'warning' })
+
         const subject = `Contato - ${data.email}`
 
         const response = await sendEmail(subject, data.email, data.message)
 
-        setHasEmailBeenSent(true)
-        setIsSendingEmail(false)
-        setEmailResponse(response.message)
-
-        setTimeout(() => {
-            setHasEmailBeenSent(false)
-        }, 4000)
-
-        if (response.status) {
+        if (response.success) {
+            setOpenNotifications({ open: true, message: 'E-mail enviado com sucesso!', type: 'success' })
             setValue("email", "")
             setValue("message", "")
         }
+        else
+            setOpenNotifications({ open: true, message: 'Falha ao enviar e-mail!', type: 'error' })
+
+        setTimeout(() => {
+            setOpenNotifications({ open: false, message: '', type: 'warning' })
+        }, 5000)
+
     }
 
     return (
@@ -57,12 +63,18 @@ export const ContactForm = () => {
             </LinkComponent>
 
             <div className="relative w-full max-w-lg flex flex-col gap-10 p-5 mt-10 rounded bg-slate-50 shadow-md">
-                {hasEmailBeenSent && (
-                    <NotificationsComponent size="md" position="bottom-right" className={`${emailResponse.includes("Falha") ? 'bg-red-500' : ''}`}>{emailResponse}</NotificationsComponent>
-                )}
+
+                <NotificationsComponent
+                    size="md"
+                    position="bottom-right"
+                    typeNotification={openNotifications.type}
+                    showNotification={openNotifications.open}
+                >
+                    {openNotifications.type === 'processing' && <AiOutlineLoading size={24} className="animate-spin" />} {openNotifications.message}
+                </NotificationsComponent>
 
                 <Input
-                    disabled={isSendingEmail}
+                    disabled={openNotifications.open}
                     type="email"
                     label="Deixe o seu melhor e-mail*"
                     placeholder="engenharia.degil@gmail.com"
@@ -71,25 +83,18 @@ export const ContactForm = () => {
                 />
 
                 <TextAreaComponent
-                    disabled={isSendingEmail}
+                    disabled={openNotifications.open}
                     label="Compartilhe suas dúvidas"
                     placeholder="Compartilhe suas dúvidas"
                     classNameTextArea="min-h-[100px]"
                     {...register("message")}
                 />
 
-                {!isSendingEmail && (
-                    <ButtonComponent
-                        className="m-auto"
-                        onClick={() => handleSubmit(onSubmit)()}
-                    />
-                )}
-
-                {isSendingEmail && (
-                    <NotificationsComponent className="m-auto">
-                        <AiOutlineLoading size={24} className="animate-spin" /> Enviando e-mail...
-                    </NotificationsComponent>
-                )}
+                <ButtonComponent
+                    disabled={openNotifications.open}
+                    className="m-auto"
+                    onClick={() => handleSubmit(onSubmit)()}
+                />
             </div>
         </div>
     )

@@ -11,7 +11,7 @@ import { config } from "../../../config.local"
 import { calculateInspectionPrice } from "@/utils/calculateInspectionPrice"
 import { emailMessage as defaultEmailMessage, whatsappMessage as defaultWhatsappMessage } from "@/utils/messageTemplates"
 import { sendEmail } from "@/utils/sendEmail"
-import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType, optionsPropertyType } from "@/utils/selectOptions"
+import { optionsHasCourtyard, optionsHasFurniture, optionsInspectionType } from "@/utils/selectOptions"
 
 import { Header } from "@/components/Header"
 import { PageTitle } from "@/components/PageTitle"
@@ -67,6 +67,12 @@ const schema = z.object({
 
 export type FormDataProps = z.infer<typeof schema>
 
+type notificationType = {
+  open: boolean,
+  message: string,
+  type: 'warning' | 'processing' | 'success' | 'error'
+}
+
 export default function Inspections() {
   const { register, handleSubmit, setValue, getValues, formState: { errors }, watch } = useForm<FormDataProps>({
     mode: "onBlur",
@@ -76,9 +82,7 @@ export default function Inspections() {
   const watchEmail = watch('requesterEmail')
   const watchCarbonCopy = watch('carbonCopy')
 
-  const [openNotifications, setOpenNotifications] = useState({ open: false, title: '' })
-  const [hasEmailBeenSent, setHasEmailBeenSent] = useState({ beenSent: false, notification: false })
-  const [emailResponse, setEmailResponse] = useState({ success: false, message: '' })
+  const [openNotifications, setOpenNotifications] = useState<notificationType>({ open: false, message: '', type: 'warning' })
   const [emailHasBeenCompleted, setEmailHasBeenCompleted] = useState(false)
   const [searchingZipCode, setSearchingZipCode] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -97,7 +101,7 @@ export default function Inspections() {
 
   const handleCalculateInspectionPrice = async (data: FormDataProps) => {
     setShowModal(true)
-    setOpenNotifications({ open: true, title: 'Calculando o total de distância...' })
+    setOpenNotifications({ open: true, message: 'Calculando o total de distância...', type: 'warning' })
 
     const response = await calculateInspectionPrice(data)
 
@@ -120,7 +124,7 @@ export default function Inspections() {
 
     setPriceInspection(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(inspection))
 
-    setOpenNotifications({ open: false, title: '' })
+    setOpenNotifications({ open: false, message: '', type: 'warning' })
     setShowValueInfoModal(true)
     sendEmailAndWhatsApp(false, data)
   }
@@ -185,7 +189,7 @@ export default function Inspections() {
       window.open(whatsappSend, '_blank')
 
     if (getValues("requesterEmail").length > 0) {
-      setOpenNotifications({ open: true, title: 'Enviando e-mail...' })
+      setOpenNotifications({ open: true, message: 'Enviando e-mail...', type: 'warning' })
       setEmailHasBeenCompleted(true)
 
       response = await sendEmail(
@@ -196,15 +200,14 @@ export default function Inspections() {
         selectedFile
       )
 
-      setHasEmailBeenSent({ beenSent: true, notification: true })
-      setOpenNotifications({ open: false, title: '' })
-
-      const message = response.success ? "E-mail enviado com sucesso" : "Falha ao enviar o e-mail"
-      setEmailResponse({ success: response.success, message: message })
+      if (response.success)
+        setOpenNotifications({ open: true, message: 'E-mail enviado com sucesso', type: 'success' })
+      else
+        setOpenNotifications({ open: true, message: response.message, type: 'error' })
 
       setTimeout(() => {
-        setHasEmailBeenSent({ ...hasEmailBeenSent, notification: false })
-      }, 4000)
+        setOpenNotifications({ open: false, message: '', type: 'warning' })
+      }, 5000)
     }
 
     return response;
@@ -216,7 +219,7 @@ export default function Inspections() {
 
     const response = await sendEmailAndWhatsApp(true, data)
 
-    if ((response?.success || hasEmailBeenSent.beenSent) || !emailHasBeenCompleted) {
+    if (response?.success || !emailHasBeenCompleted) {
       setValue("address", "")
       setValue("addressComplement", "")
       setValue("addressNumber", "")
@@ -385,9 +388,15 @@ export default function Inspections() {
 
       <Header />
       <MainComponent className="items-center">
-        {hasEmailBeenSent.notification && (
-          <NotificationsComponent size="md" position="bottom-right" className={`z-20 ${!emailResponse.success ? 'bg-red-500' : ''}`}>{emailResponse.message}</NotificationsComponent>
-        )}
+
+        <NotificationsComponent
+          size="md"
+          position="bottom-right"
+          typeNotification={openNotifications.type}
+          showNotification={openNotifications.open}
+        >
+          {openNotifications.type === 'processing' && <AiOutlineLoading size={24} className="animate-spin" />} {openNotifications.message}
+        </NotificationsComponent>
 
         <PageTitle title="Vistorias - Apresentação Comercial" />
 
@@ -675,20 +684,20 @@ export default function Inspections() {
             {...register("effectivenessDate")}
           />
 
-          {!openNotifications.open && (
-            <ButtonComponent
-              onClick={() => handleSubmit(handleCalculateInspectionPrice)()}
-              className="xs:col-span-8 m-auto mt-10"
-            >
-              Realizar Simulação
-            </ButtonComponent>
-          )}
+          {/* {!openNotifications.open && ( */}
+          <ButtonComponent
+            onClick={() => handleSubmit(handleCalculateInspectionPrice)()}
+            className="xs:col-span-8 m-auto mt-10"
+          >
+            Realizar Simulação
+          </ButtonComponent>
+          {/* )} */}
 
-          {openNotifications.open && (
+          {/* {openNotifications.open && (
             <NotificationsComponent className="z-20 xs:col-span-8 m-auto mt-10">
               <AiOutlineLoading size={24} className="animate-spin" /> {openNotifications.title}
             </NotificationsComponent>
-          )}
+          )} */}
         </div>
       </MainComponent >
     </>

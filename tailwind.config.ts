@@ -23,7 +23,7 @@ const config: Config = {
         primary: "#03466e",
         secondary: "#ed631d",
         hover: "#303f47"
-      },
+      }
     },
     screens: {
       'xs': '544px',
