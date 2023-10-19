@@ -94,7 +94,9 @@ export const ContactForm = () => {
                     disabled={openNotifications.open}
                     className="m-auto"
                     onClick={() => handleSubmit(onSubmit)()}
-                />
+                >
+                    Enviar
+                </ButtonComponent>
             </div>
         </div>
     )
